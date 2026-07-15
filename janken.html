@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (純粋進化版)</title>
+    <title>じゃんけん生態系シミュレーター (数値入力対応版)</title>
     <style>
         body {
             margin: 0;
@@ -22,8 +22,8 @@
             flex-direction: column;
             align-items: center;
             gap: 10px;
-            width: 90%;
-            max-width: 1000px;
+            width: 95%;
+            max-width: 1100px;
         }
         canvas {
             border: 2px solid #555;
@@ -59,17 +59,38 @@
             flex-direction: column;
             align-items: flex-start;
             font-size: 12px;
-            width: 130px;
+            width: 165px; /* 入力欄追加に伴い少し幅を広げました */
         }
         .slider-group label {
             margin-bottom: 4px;
+            font-weight: bold;
+        }
+        /* スライダーと数値入力を横並びにするラッパー */
+        .input-row {
             display: flex;
-            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
             width: 100%;
         }
-        .slider-group input {
-            width: 100%;
+        .input-row input[type="range"] {
+            flex: 1;
         }
+        /* 数値入力ボックスのスタイル */
+        .input-row input[type="number"] {
+            width: 45px;
+            background-color: #444;
+            color: #fff;
+            border: 1px solid #666;
+            border-radius: 4px;
+            padding: 3px;
+            font-size: 11px;
+            text-align: center;
+        }
+        .input-row input[type="number"]:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+
         #rockWeight { accent-color: #ff4a4a; }
         #scissorsWeight { accent-color: #4aff4a; }
         #paperWeight { accent-color: #4a4aff; }
@@ -111,31 +132,49 @@
         <div id="controls">
             <div class="control-block">
                 <div class="slider-group">
-                    <label>✊ グー: <span id="rockVal">50</span></label>
-                    <input type="range" id="rockWeight" min="0" max="100" value="50">
+                    <label>✊ グー重み</label>
+                    <div class="input-row">
+                        <input type="range" id="rockWeight" min="0" max="100" value="50">
+                        <input type="number" id="rockNum" min="0" max="100" value="50">
+                    </div>
                 </div>
                 <div class="slider-group">
-                    <label>✌️ チョキ: <span id="scissorsVal">50</span></label>
-                    <input type="range" id="scissorsWeight" min="0" max="100" value="50">
+                    <label>✌️ チョキ重み</label>
+                    <div class="input-row">
+                        <input type="range" id="scissorsWeight" min="0" max="100" value="50">
+                        <input type="number" id="scissorsNum" min="0" max="100" value="50">
+                    </div>
                 </div>
                 <div class="slider-group">
-                    <label>🖐️ パー: <span id="paperVal">50</span></label>
-                    <input type="range" id="paperWeight" min="0" max="100" value="50">
+                    <label>🖐️ パー重み</label>
+                    <div class="input-row">
+                        <input type="range" id="paperWeight" min="0" max="100" value="50">
+                        <input type="number" id="paperNum" min="0" max="100" value="50">
+                    </div>
                 </div>
             </div>
 
             <div class="control-block">
                 <div class="slider-group">
-                    <label>⏳ HP減少間隔: <span id="decayVal">10</span>秒</label>
-                    <input type="range" id="decayInterval" min="1" max="30" value="10">
+                    <label>⏳ HP減少間隔 (秒)</label>
+                    <div class="input-row">
+                        <input type="range" id="decayInterval" min="1" max="30" value="10">
+                        <input type="number" id="decayNum" min="1" max="30" value="10">
+                    </div>
                 </div>
                 <div class="slider-group">
-                    <label>⚡ 分裂時変異率: <span id="mutRateVal">5</span>%</label>
-                    <input type="range" id="mutRate" min="0" max="100" value="5">
+                    <label>⚡ 分裂時変異率 (%)</label>
+                    <div class="input-row">
+                        <input type="range" id="mutRate" min="0" max="100" value="5">
+                        <input type="number" id="mutRateNum" min="0" max="100" value="5">
+                    </div>
                 </div>
                 <div class="slider-group">
-                    <label>🔮 変異の変化幅: <span id="mutAmtVal">10</span>%</label>
-                    <input type="range" id="mutAmt" min="1" max="50" value="10">
+                    <label>🔮 変異変化幅 (%)</label>
+                    <div class="input-row">
+                        <input type="range" id="mutAmt" min="1" max="50" value="10">
+                        <input type="number" id="mutAmtNum" min="1" max="50" value="10">
+                    </div>
                 </div>
             </div>
 
@@ -145,7 +184,7 @@
         <canvas id="simCanvas" width="800" height="480"></canvas>
         
         <div id="info">
-            【操作方法】スライダーを設定し、<strong style="color: #fff;">画面をクリックして配置</strong>してください。<br>
+            【操作方法】数値を設定し、<strong style="color: #fff;">画面をクリックして配置</strong>してください（スライダー・直接入力のどちらでも変更可能です）。<br>
             現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
             <span style="color: #1abc9c; font-weight: bold;">※ 各個体の色は一生固定されます。突然変異は分裂した子どものみに発生します。</span>
         </div>
@@ -158,18 +197,12 @@
         const rockSlider = document.getElementById('rockWeight');
         const scissorsSlider = document.getElementById('scissorsWeight');
         const paperSlider = document.getElementById('paperWeight');
-        const rockVal = document.getElementById('rockVal');
-        const scissorsVal = document.getElementById('scissorsVal');
-        const paperVal = document.getElementById('paperVal');
         const clearBtn = document.getElementById('clearBtn');
         const countBadge = document.getElementById('creatureCount');
 
         const decayIntervalSlider = document.getElementById('decayInterval');
         const mutRateSlider = document.getElementById('mutRate');
         const mutAmtSlider = document.getElementById('mutAmt');
-        const decayVal = document.getElementById('decayVal');
-        const mutRateVal = document.getElementById('mutRateVal');
-        const mutAmtVal = document.getElementById('mutAmtVal');
 
         const SPEED_MULT = 0.25; 
 
@@ -266,7 +299,6 @@
                 }
             }
 
-            // 突然変異処理
             mutate(mutationAmount) {
                 const keys = ['rock', 'scissors', 'paper'];
                 const loseAttr = keys[Math.floor(Math.random() * keys.length)];
@@ -279,7 +311,6 @@
                 this.genes[loseAttr] -= actualN;
                 this.genes[gainAttr] += actualN;
 
-                // 合計を確実に 1.0 に再調整
                 const sum = this.genes.rock + this.genes.scissors + this.genes.paper;
                 this.genes.rock /= sum;
                 this.genes.scissors /= sum;
@@ -289,21 +320,51 @@
 
         let creatures = [];
 
-        function updateLabels() {
-            rockVal.textContent = rockSlider.value;
-            scissorsVal.textContent = scissorsSlider.value;
-            paperVal.textContent = paperSlider.value;
+        // --- 【双方向同期システム】スライダーと数値ボックスの連動処理 ---
+        const inputPairs = [
+            { slider: document.getElementById('rockWeight'), num: document.getElementById('rockNum') },
+            { slider: document.getElementById('scissorsWeight'), num: document.getElementById('scissorsNum') },
+            { slider: document.getElementById('paperWeight'), num: document.getElementById('paperNum') },
+            { slider: document.getElementById('decayInterval'), num: document.getElementById('decayNum') },
+            { slider: document.getElementById('mutRate'), num: document.getElementById('mutRateNum') },
+            { slider: document.getElementById('mutAmt'), num: document.getElementById('mutAmtNum') }
+        ];
 
-            decayVal.textContent = decayIntervalSlider.value;
-            mutRateVal.textContent = mutRateSlider.value;
-            mutAmtVal.textContent = mutAmtSlider.value;
-        }
+        inputPairs.forEach(pair => {
+            // 1. スライダーを動かした時 -> 数値ボックスに値を送る
+            pair.slider.addEventListener('input', () => {
+                pair.num.value = pair.slider.value;
+            });
 
-        [rockSlider, scissorsSlider, paperSlider, decayIntervalSlider, mutRateSlider, mutAmtSlider].forEach(slider => {
-            slider.addEventListener('input', updateLabels);
+            // 2. 数値ボックスに入力した時 -> スライダーに値を送る（範囲外チェックも自動適用）
+            pair.num.addEventListener('input', () => {
+                let val = parseFloat(pair.num.value);
+                const min = parseFloat(pair.slider.min);
+                const max = parseFloat(pair.slider.max);
+
+                if (isNaN(val)) return;
+
+                // 範囲外の数値を丸める処理
+                if (val < min) val = min;
+                if (val > max) val = max;
+
+                pair.slider.value = val;
+            });
+
+            // 入力中ではなく、決定（フォーカスが外れた）時に異常値を自動補正する
+            pair.num.addEventListener('blur', () => {
+                if (pair.num.value === '' || isNaN(parseFloat(pair.num.value))) {
+                    pair.num.value = pair.slider.value;
+                } else {
+                    let val = parseFloat(pair.num.value);
+                    const min = parseFloat(pair.slider.min);
+                    const max = parseFloat(pair.slider.max);
+                    if (val < min) val = min;
+                    if (val > max) val = max;
+                    pair.num.value = val;
+                }
+            });
         });
-
-        updateLabels();
 
         canvas.addEventListener('mousedown', (e) => {
             const rect = canvas.getBoundingClientRect();
@@ -390,7 +451,6 @@
                         const hand2 = c2.decideHand();
                         const result = playJanken(hand1, hand2);
 
-                        // --- 【完全解決】ぶつかり合いによる遺伝子・色の同調処理（absorb）を完全に削除しました！ ---
                         if (result === 1) {
                             c1.hp += 1;
                             c2.hp -= 1;
@@ -425,10 +485,8 @@
                     cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                     cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                    // 親の遺伝子をベースにクローンを生成
                     const clone = new Creature(cloneX, cloneY, c.genes.rock, c.genes.scissors, c.genes.paper);
 
-                    // 突然変異は分裂して生まれた瞬間のクローンのみに適用
                     const mutationRate = parseFloat(mutRateSlider.value) / 100;
                     if (Math.random() < mutationRate) {
                         const mutationAmount = parseFloat(mutAmtSlider.value) / 100;
