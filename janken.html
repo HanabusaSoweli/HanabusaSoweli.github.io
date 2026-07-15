@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (世代交代変異版)</title>
+    <title>じゃんけん生態系シミュレーター (完全修正版)</title>
     <style>
         body {
             margin: 0;
@@ -267,7 +267,7 @@
                 }
             }
 
-            // 突然変異処理 (変化幅を外部から受け取るよう修正)
+            // 突然変異処理
             mutate(mutationAmount) {
                 const keys = ['rock', 'scissors', 'paper'];
                 const loseAttr = keys[Math.floor(Math.random() * keys.length)];
@@ -322,6 +322,7 @@
             } else {
                 r = rW / sum;
                 s = sW / sum;
+                p = pW / sum; // ★【修正】ここが抜けていたため、パー（青）が反映されていませんでした！
             }
 
             creatures.push(new Creature(x, y, r, s, p));
@@ -399,8 +400,6 @@
                             c2.hp += 1;
                             c1.hp -= 1;
                         }
-
-                        // --- 修正点1: 衝突時の突然変異 (c1.mutate / c2.mutate) を完全に廃止 ---
                     }
                 }
             }
@@ -441,7 +440,7 @@
                     // 親の遺伝子をベースにクローンを生成
                     const clone = new Creature(cloneX, cloneY, c.genes.rock, c.genes.scissors, c.genes.paper);
 
-                    // --- 修正点2: 突然変異は分裂して生まれた瞬間のクローンのみに適用 ---
+                    // 突然変異は分裂して生まれた瞬間のクローンのみに適用
                     const mutationRate = parseFloat(mutRateSlider.value) / 100;
                     if (Math.random() < mutationRate) {
                         const mutationAmount = parseFloat(mutAmtSlider.value) / 100;
