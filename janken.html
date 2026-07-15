@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (生存時間延長版)</title>
+    <title>じゃんけん生態系シミュレーター (密度バランス調整版)</title>
     <style>
         body {
             margin: 0;
@@ -195,7 +195,7 @@
                         </div>
                     </div>
                     <div class="slider-group">
-                        <label>⏳ HP減少間隔 (秒)</label>
+                        <label>⏳ 基準HP減少間隔 (秒)</label>
                         <div class="input-row">
                             <input type="range" id="decayInterval" min="1" max="300" value="120">
                             <input type="number" id="decayNum" min="1" max="300" value="120">
@@ -257,7 +257,7 @@
         <div id="info">
             【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置</strong>してください。時間速度はいつでも変更可能です。<br>
             現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
-            <span style="color: #1abc9c; font-weight: bold;">※ 各個体の色は一生固定されます。突然変異は分裂した子どものみに発生します。</span>
+            <span style="color: #1abc9c; font-weight: bold;">※ 周囲（半径200px）に他個体が多いと密状態になりHP減少が加速します（25体で4倍速）。</span>
         </div>
     </div>
 
@@ -294,14 +294,14 @@
                 this.hp = 10;
                 
                 this.simulatedAge = 0;       
-                this.simulatedLastDecay = 0; 
+                this.decayAccumulator = 0; 
             }
 
             isInvincible() {
                 return this.simulatedAge < 1500; 
             }
 
-            update(simDt) {
+            update(simDt, allCreatures) {
                 this.x += this.vx * timeScale;
                 this.y += this.vy * timeScale;
 
@@ -324,10 +324,29 @@
 
                 this.simulatedAge += simDt;
 
+                // --- 密度依存型HP減少システム ---
+                const CROWD_RADIUS = 200; // 【変更】判定距離を100pxから200pxに広げる
+                let neighborCount = 0;
+
+                for (let i = 0; i < allCreatures.length; i++) {
+                    const other = allCreatures[i];
+                    if (other === this) continue;
+                    const dist = Math.hypot(other.x - this.x, other.y - this.y);
+                    if (dist < CROWD_RADIUS) {
+                        neighborCount++;
+                    }
+                }
+
+                // 【変更】緩やかな傾きに調整（25体で4.0倍になるように設計）
+                // 0体：0.4倍 / 4体：約1.0倍(基準) / 25体：4.0倍
+                const densityMultiplier = 0.4 + neighborCount * 0.144;
+
+                this.decayAccumulator += simDt * densityMultiplier;
+
                 const decayIntervalMs = parseFloat(decayIntervalSlider.value) * 1000;
-                if (this.simulatedAge - this.simulatedLastDecay >= decayIntervalMs) {
+                if (this.decayAccumulator >= decayIntervalMs) {
                     this.hp -= 1;
-                    this.simulatedLastDecay += decayIntervalMs; 
+                    this.decayAccumulator -= decayIntervalMs; 
                 }
             }
 
@@ -550,7 +569,7 @@
 
             for (let i = 0; i < creatures.length; i++) {
                 const c = creatures[i];
-                c.update(simDt);
+                c.update(simDt, creatures);
                 c.draw();
 
                 // 分裂（クローン）処理
