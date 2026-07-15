@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (血縁ハイライト切り替え版)</title>
+    <title>じゃんけん生態系シミュレーター (カスタムハンド版)</title>
     <style>
         body {
             margin: 0;
@@ -124,6 +124,8 @@
             flex-direction: column;
             gap: 4px;
             margin-top: 5px;
+            max-height: 160px;
+            overflow-y: auto;
         }
         .gene-label {
             font-size: 11px;
@@ -135,6 +137,7 @@
             position: relative;
             background-color: #111;
             overflow: hidden;
+            min-height: 14px;
         }
         .gene-fill {
             height: 100%;
@@ -167,6 +170,7 @@
             gap: 8px;
             border-right: 1px solid #555;
             padding-right: 20px;
+            position: relative; /* 子要素の絶対配置基準用 */
         }
         .control-column:last-of-type {
             border-right: none;
@@ -177,8 +181,8 @@
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            font-size: 12px;
-            width: 190px;
+            font-size: 11px;
+            width: 250px;
         }
         .slider-group label {
             margin-bottom: 4px;
@@ -249,9 +253,6 @@
             font-weight: bold;
         }
 
-        #rockWeight { accent-color: #ff4a4a; }
-        #scissorsWeight { accent-color: #4aff4a; }
-        #paperWeight { accent-color: #4a4aff; }
         #decayInterval { accent-color: #f39c12; }
         #mutRate { accent-color: #9b59b6; }
         #mutAmt { accent-color: #1abc9c; }
@@ -283,53 +284,58 @@
 <body>
 
     <div id="container">
-        <h2 style="margin: 0;">じゃんけん生態系シミュレーター</h2>
+        <h2 style="margin: 0;">じゃんけん生態系シミュレーター (カスタムハンド版)</h2>
         
         <div id="controls">
             <div class="control-grid">
-                <div class="control-column">
-                    <div class="slider-group">
-                        <label>✊ グー重み</label>
-                        <div class="input-row">
-                            <input type="range" id="rockWeight" min="0" max="100" value="50">
-                            <input type="number" id="rockNum" min="0" max="100" value="50">
+                
+                <div class="control-column" style="width: 280px;">
+                    <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">✋ 手のマスターリスト</h4>
+                    <div id="handListContainer" style="display: flex; flex-direction: column; gap: 4px; height: 110px; overflow-y: auto; background: #1e1e1e; padding: 6px; border-radius: 4px; border: 1px solid #444;">
                         </div>
+                    <button id="showAddHandFormBtn" style="margin-top: 6px; font-size: 11px; padding: 5px; background: #3498db; color: #fff; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold;">＋ 新しい手を追加</button>
+                    
+                    <div id="addHandForm" style="display: none; background: #2c2c2c; border: 2px solid #555; padding: 10px; border-radius: 6px; font-size: 11px; flex-direction: column; gap: 8px; position: absolute; z-index: 20; width: 260px; top: 10px; left: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.6);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 4px;">
+                            <strong style="color: #3498db;">🖐️ 手の追加登録</strong>
+                            <button id="closeAddHandFormBtn" style="background: none; border: none; color: #aaa; cursor: pointer; font-size: 14px;">✕</button>
+                        </div>
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <input type="text" id="newHandName" placeholder="例: ⚡ 雷" style="flex: 1; background: #111; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 4px; font-size: 11px; box-sizing: border-box;">
+                            <input type="color" id="newHandColor" value="#e74c3c" style="width: 28px; height: 24px; border: none; padding: 0; background: none; cursor: pointer;">
+                        </div>
+                        <div>
+                            <span style="color: #aaa; font-weight: bold;">勝つ相手（複数選択可）:</span>
+                            <div id="beatsCheckboxes" style="display: flex; flex-direction: column; gap: 4px; max-height: 80px; overflow-y: auto; background: #111; padding: 6px; border-radius: 4px; margin-top: 4px; border: 1px solid #444;">
+                                </div>
+                        </div>
+                        <button id="submitAddHandBtn" style="background: #2ecc71; color: #fff; border: none; border-radius: 4px; padding: 6px; cursor: pointer; font-weight: bold; font-size: 11px;">登録を確定</button>
                     </div>
-                    <div class="slider-group">
+                </div>
+
+                <div class="control-column" id="dynamicSlidersColumn" style="width: 280px;">
+                    <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">🧬 誕生時の初期遺伝子比率</h4>
+                    <div id="dynamicSlidersContainer" style="display: flex; flex-direction: column; gap: 6px; height: 140px; overflow-y: auto; padding-right: 5px;">
+                        </div>
+                </div>
+
+                <div class="control-column" style="width: 280px;">
+                    <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">⚙️ 環境・進化設定</h4>
+                    <div class="slider-group" style="width: 100%;">
                         <label>⏳ 基準HP減少間隔 (秒)</label>
                         <div class="input-row">
                             <input type="range" id="decayInterval" min="1" max="300" value="120">
                             <input type="number" id="decayNum" min="1" max="300" value="120">
                         </div>
                     </div>
-                </div>
-
-                <div class="control-column">
-                    <div class="slider-group">
-                        <label>✌️ チョキ重み</label>
-                        <div class="input-row">
-                            <input type="range" id="scissorsWeight" min="0" max="100" value="50">
-                            <input type="number" id="scissorsNum" min="0" max="100" value="50">
-                        </div>
-                    </div>
-                    <div class="slider-group">
+                    <div class="slider-group" style="width: 100%; margin-top: 4px;">
                         <label>⚡ 分裂時変異率 (%)</label>
                         <div class="input-row">
                             <input type="range" id="mutRate" min="0" max="100" value="5">
                             <input type="number" id="mutRateNum" min="0" max="100" value="5">
                         </div>
                     </div>
-                </div>
-
-                <div class="control-column">
-                    <div class="slider-group">
-                        <label>🖐️ パー重み</label>
-                        <div class="input-row">
-                            <input type="range" id="paperWeight" min="0" max="100" value="50">
-                            <input type="number" id="paperNum" min="0" max="100" value="50">
-                        </div>
-                    </div>
-                    <div class="slider-group">
+                    <div class="slider-group" style="width: 100%; margin-top: 4px;">
                         <label>🔮 変異変化幅 (%)</label>
                         <div class="input-row">
                             <input type="range" id="mutAmt" min="1" max="50" value="10">
@@ -390,9 +396,6 @@
         const canvas = document.getElementById('simCanvas');
         const ctx = canvas.getContext('2d');
 
-        const rockSlider = document.getElementById('rockWeight');
-        const scissorsSlider = document.getElementById('scissorsWeight');
-        const paperSlider = document.getElementById('paperWeight');
         const clearBtn = document.getElementById('clearBtn');
         const countBadge = document.getElementById('creatureCount');
 
@@ -401,12 +404,28 @@
         const mutAmtSlider = document.getElementById('mutAmt');
         
         const statusContent = document.getElementById('statusContent');
-
-        // ハイライトモード取得用ラジオボタン
         const highlightRadios = document.getElementsByName('highlightMode');
+
+        // 手の追加フォーム関連UI
+        const addHandForm = document.getElementById('addHandForm');
+        const showAddHandFormBtn = document.getElementById('showAddHandFormBtn');
+        const closeAddHandFormBtn = document.getElementById('closeAddHandFormBtn');
+        const submitAddHandBtn = document.getElementById('submitAddHandBtn');
+        const newHandName = document.getElementById('newHandName');
+        const newHandColor = document.getElementById('newHandColor');
+        const beatsCheckboxes = document.getElementById('beatsCheckboxes');
+        const handListContainer = document.getElementById('handListContainer');
+        const dynamicSlidersContainer = document.getElementById('dynamicSlidersContainer');
 
         const SPEED_MULT = 0.25; 
         let timeScale = 1.0; 
+
+        // --- 動的に増減可能なじゃんけんの手のマスターデータ ---
+        let hands = [
+            { id: 'rock', name: '✊ グー', color: '#ff4a4a', beats: ['scissors'] },
+            { id: 'scissors', name: '✌️ チョキ', color: '#4aff4a', beats: ['paper'] },
+            { id: 'paper', name: '🖐️ パー', color: '#4a4aff', beats: ['rock'] }
+        ];
 
         // --- 家系・ID管理システム ---
         let familyCounter = 0;
@@ -420,8 +439,23 @@
         let mouseY = -9999;
         let hoveredCreature = null;
 
+        // --- カラーブレンド用のヘルパー関数 (16進数 -> RGB) ---
+        function hexToRgb(hex) {
+            let shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+            hex = hex.replace(shorthandRegex, function(m, r, g, b) {
+                return r + r + g + g + b + b;
+            });
+            let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 255, g: 255, b: 255 };
+        }
+
         class Creature {
-            constructor(x, y, r, s, p, familyId, parentId = null) {
+            // 第3引数を「遺伝子比率オブジェクト」に変更して汎用性を確保
+            constructor(x, y, genes, familyId, parentId = null) {
                 this.id = ++creatureIdCounter; // ユニークID
                 
                 this.x = x;
@@ -434,23 +468,34 @@
                 this.vx = Math.cos(angle) * speed;
                 this.vy = Math.sin(angle) * speed;
 
-                this.genes = { rock: r, scissors: s, paper: p };
+                // 遺伝子配列のディープコピー（登録されていない手は0で初期化）
+                this.genes = {};
+                hands.forEach(h => {
+                    this.genes[h.id] = genes[h.id] !== undefined ? genes[h.id] : 0;
+                });
+
+                // 合計が確実に1になるよう、作成時に正規化
+                let sum = 0;
+                hands.forEach(h => sum += this.genes[h.id]);
+                if (sum > 0) {
+                    hands.forEach(h => this.genes[h.id] /= sum);
+                } else {
+                    hands.forEach(h => this.genes[h.id] = 1 / hands.length);
+                }
+
                 this.hp = 10;
-                
                 this.simulatedAge = 0;       
                 this.decayAccumulator = 0; 
 
-                // 初代が設定された場合はその家系名、なければ新規
                 this.familyId = familyId || `家系 #${++familyCounter}`;
 
-                // 親子関係をグラフに登録
+                // 親子関係を家系グラフに登録
                 familyGraph.set(this.id, new Set());
                 if (parentId && familyGraph.has(parentId)) {
                     familyGraph.get(parentId).add(this.id);
                     familyGraph.get(this.id).add(parentId);
                 }
 
-                // 毎フレーム表示用
                 this.lastNeighborCount = 0;
                 this.lastMultiplier = 1.0;
             }
@@ -482,7 +527,7 @@
 
                 this.simulatedAge += simDt;
 
-                // --- 密度依存型HP減少システム (150px-50体で4倍調整) ---
+                // 密度依存型HP減少システム (150px-50体で4倍調整)
                 const CROWD_RADIUS = 150; 
                 let neighborCount = 0;
 
@@ -509,21 +554,39 @@
                 }
             }
 
-            // 引数に「光らせるべきか」のフラグを受け取る
+            // 【新設計】すべての手を動的ブレンドして描画
             draw(isHighlighted) {
                 ctx.save();
 
-                const red = Math.floor(this.genes.rock * 255);
-                const green = Math.floor(this.genes.scissors * 255);
-                const blue = Math.floor(this.genes.paper * 255);
+                // 遺伝子の比率（重み）に基づき、登録カラーをRGBにブレンド
+                let rSum = 0, gSum = 0, bSum = 0;
+                let totalWeight = 0;
 
-                // 対象時にオーラを纏う
+                hands.forEach(h => {
+                    const weight = this.genes[h.id] || 0;
+                    const rgb = hexToRgb(h.color);
+                    rSum += rgb.r * weight;
+                    gSum += rgb.g * weight;
+                    bSum += rgb.b * weight;
+                    totalWeight += weight;
+                });
+
+                if (totalWeight === 0) {
+                    rSum = gSum = bSum = 255; // 異常時フォールバック
+                }
+
+                const red = Math.floor(rSum);
+                const green = Math.floor(gSum);
+                const blue = Math.floor(bSum);
+                const baseColorStr = `rgb(${red}, ${green}, ${blue})`;
+
+                // ハイライト時に、その個体のブレンド色に応じた美しいオーラを描画
                 if (isHighlighted) {
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius + 6, 0, Math.PI * 2);
                     ctx.fillStyle = `rgba(${red}, ${green}, ${blue}, 0.45)`; 
                     ctx.shadowBlur = 10;
-                    ctx.shadowColor = `rgb(${red}, ${green}, ${blue})`;
+                    ctx.shadowColor = baseColorStr;
                     ctx.fill();
                     ctx.closePath();
                     ctx.shadowBlur = 0; 
@@ -537,7 +600,7 @@
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 
-                ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+                ctx.fillStyle = baseColorStr;
                 ctx.fill();
                 
                 ctx.strokeStyle = invincible ? '#f1c40f' : '#fff';
@@ -553,39 +616,51 @@
                 ctx.restore(); 
             }
 
+            // 手の決定（動的に蓄積確率を計算）
             decideHand() {
                 const rand = Math.random();
-                if (rand < this.genes.rock) {
-                    return 'rock';
-                } else if (rand < this.genes.rock + this.genes.scissors) {
-                    return 'scissors';
-                } else {
-                    return 'paper';
+                let cumulative = 0;
+                for (let i = 0; i < hands.length; i++) {
+                    const h = hands[i];
+                    cumulative += (this.genes[h.id] || 0);
+                    if (rand < cumulative) {
+                        return h.id;
+                    }
                 }
+                return hands[hands.length - 1].id;
             }
 
+            // 遺伝子変異（何通りになっても対応）
             mutate(mutationAmount) {
-                const keys = ['rock', 'scissors', 'paper'];
-                const loseAttr = keys[Math.floor(Math.random() * keys.length)];
+                if (hands.length < 2) return;
+
+                const activeHandIds = hands.map(h => h.id);
+                // ランダムに「減らす遺伝子」と「増やす遺伝子」を決める
+                const loseAttr = activeHandIds[Math.floor(Math.random() * activeHandIds.length)];
                 let gainAttr;
                 do {
-                    gainAttr = keys[Math.floor(Math.random() * keys.length)];
-                } while (gainAttr === loseAttr);
+                    gainAttr = activeHandIds[Math.floor(Math.random() * activeHandIds.length)];
+                } while (gainAttr === loseAttr && activeHandIds.length > 1);
+
+                if (!this.genes[loseAttr]) this.genes[loseAttr] = 0;
+                if (!this.genes[gainAttr]) this.genes[gainAttr] = 0;
 
                 const actualN = Math.min(mutationAmount, this.genes[loseAttr]);
                 this.genes[loseAttr] -= actualN;
                 this.genes[gainAttr] += actualN;
 
-                const sum = this.genes.rock + this.genes.scissors + this.genes.paper;
-                this.genes.rock /= sum;
-                this.genes.scissors /= sum;
-                this.genes.paper /= sum;
+                // 変異後に総和1へと再調整
+                let sum = 0;
+                activeHandIds.forEach(id => sum += (this.genes[id] || 0));
+                if (sum > 0) {
+                    activeHandIds.forEach(id => this.genes[id] = (this.genes[id] || 0) / sum);
+                }
             }
         }
 
         let creatures = [];
 
-        // --- 現在選択されているハイライトモードを取得 ---
+        // 現在選択されているハイライトモード取得
         function getSelectedHighlightMode() {
             for (const r of highlightRadios) {
                 if (r.checked) return r.value;
@@ -619,7 +694,7 @@
             return relatives;
         }
 
-        // --- 【GC処理】メモリ節約のための家族グラフのクリーニング ---
+        // --- 【GC処理】使わなくなった古い家系グラフデータを掃除 ---
         function cleanUpFamilyGraph() {
             const activeIds = new Set();
             const visited = new Set();
@@ -663,11 +738,214 @@
             }
         }
 
-        // 双方向入力同期
+        // --- 【新機能】手のマスターリストのHTML生成と管理 ---
+        function renderHandList() {
+            handListContainer.innerHTML = '';
+            hands.forEach(h => {
+                const div = document.createElement('div');
+                div.style.display = 'flex';
+                div.style.alignItems = 'center';
+                div.style.justifyContent = 'space-between';
+                div.style.background = '#2a2a2a';
+                div.style.padding = '4px 6px';
+                div.style.borderRadius = '4px';
+                div.style.fontSize = '11px';
+
+                // 相性ルールの文字列表現
+                const winTargets = h.beats.map(id => {
+                    const found = hands.find(item => item.id === id);
+                    return found ? found.name.split(' ')[0] : ''; // 絵文字だけ取り出す
+                }).filter(Boolean).join(', ');
+
+                div.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;">
+                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${h.color}; flex-shrink: 0;"></span>
+                        <span style="font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${h.name}">${h.name}</span>
+                        <span style="color: #bbb; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">→ ${winTargets || 'なし'}に勝ち</span>
+                    </div>
+                    <button class="delete-hand-btn" data-id="${h.id}" style="background: #e74c3c; border: none; color: #fff; border-radius: 3px; padding: 1px 4px; cursor: pointer; font-size: 9px;">✕</button>
+                `;
+                handListContainer.appendChild(div);
+            });
+
+            // 削除ボタンのリスナー追加
+            document.querySelectorAll('.delete-hand-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const targetId = btn.dataset.id;
+                    if (hands.length <= 3) {
+                        alert("じゃんけん（すくみ）が破綻しないよう、手は最低3つ必要です！");
+                        return;
+                    }
+                    
+                    // リストから消去
+                    hands = hands.filter(h => h.id !== targetId);
+                    // 他の手の勝利リスト（beats）からも該当IDを消去
+                    hands.forEach(h => {
+                        h.beats = h.beats.filter(id => id !== targetId);
+                    });
+
+                    // 生きている生き物の遺伝子情報から削除した手を消去して再正規化
+                    creatures.forEach(c => {
+                        delete c.genes[targetId];
+                        let sum = 0;
+                        hands.forEach(h => sum += (c.genes[h.id] || 0));
+                        if (sum > 0) {
+                            hands.forEach(h => c.genes[h.id] = (c.genes[h.id] || 0) / sum);
+                        } else {
+                            hands.forEach(h => c.genes[h.id] = 1 / hands.length);
+                        }
+                    });
+
+                    renderHandList();
+                    renderDynamicSliders();
+                    updateStatusPanel();
+                });
+            });
+        }
+
+        // --- 【新機能】誕生時の初期遺伝子スライダーの動的生成 ---
+        function renderDynamicSliders() {
+            // 現行のスライダー値が残っていたら一旦確保
+            const currentValues = {};
+            hands.forEach(h => {
+                const el = document.getElementById(`weight_${h.id}`);
+                currentValues[h.id] = el ? el.value : 50; // デフォルト50
+            });
+
+            dynamicSlidersContainer.innerHTML = '';
+
+            hands.forEach(h => {
+                const val = currentValues[h.id];
+                const group = document.createElement('div');
+                group.className = 'slider-group';
+                group.style.width = '100%';
+                
+                group.innerHTML = `
+                    <label style="color: ${h.color};">${h.name} 初期比率</label>
+                    <div class="input-row">
+                        <input type="range" id="weight_${h.id}" min="0" max="100" value="${val}" style="accent-color: ${h.color};">
+                        <input type="number" id="num_${h.id}" min="0" max="100" value="${val}">
+                    </div>
+                `;
+                dynamicSlidersContainer.appendChild(group);
+
+                // 動的スライダー用の双方向同期
+                const slider = document.getElementById(`weight_${h.id}`);
+                const num = document.getElementById(`num_${h.id}`);
+
+                slider.addEventListener('input', () => {
+                    num.value = slider.value;
+                });
+
+                num.addEventListener('input', () => {
+                    let v = parseFloat(num.value);
+                    if (isNaN(v)) return;
+                    if (v < 0) v = 0;
+                    if (v > 100) v = 100;
+                    slider.value = v;
+                });
+
+                num.addEventListener('blur', () => {
+                    if (num.value === '' || isNaN(parseFloat(num.value))) {
+                        num.value = slider.value;
+                    } else {
+                        let v = parseFloat(num.value);
+                        if (v < 0) v = 0;
+                        if (v > 100) v = 100;
+                        num.value = v;
+                    }
+                });
+            });
+        }
+
+        // スライダーから遺伝子を割合計算する
+        function getInitialGenes() {
+            const weights = {};
+            let sum = 0;
+            hands.forEach(h => {
+                const slider = document.getElementById(`weight_${h.id}`);
+                const val = slider ? parseFloat(slider.value) : 50;
+                weights[h.id] = val;
+                sum += val;
+            });
+
+            if (sum === 0) {
+                hands.forEach(h => weights[h.id] = 1 / hands.length);
+            } else {
+                hands.forEach(h => weights[h.id] /= sum);
+            }
+            return weights;
+        }
+
+        // 新しい手を追加するための「勝つ相手」リストをポップアップ内に構築
+        function populateBeatsCheckboxes() {
+            beatsCheckboxes.innerHTML = '';
+            hands.forEach(h => {
+                const label = document.createElement('label');
+                label.className = 'radio-label';
+                label.style.fontSize = '11px';
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '4px';
+
+                label.innerHTML = `
+                    <input type="checkbox" value="${h.id}" class="beats-checkbox" style="margin: 0;">
+                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${h.color};"></span>
+                    <span>${h.name}</span>
+                `;
+                beatsCheckboxes.appendChild(label);
+            });
+        }
+
+        // 手の追加登録確定処理
+        submitAddHandBtn.addEventListener('click', () => {
+            const name = newHandName.value.trim();
+            const color = newHandColor.value;
+
+            if (!name) {
+                alert('手の名前を入力してください！(例: ⚡ 雷)');
+                return;
+            }
+
+            const newId = 'hand_' + Date.now();
+            const checkedBoxes = beatsCheckboxes.querySelectorAll('.beats-checkbox:checked');
+            const beats = Array.from(checkedBoxes).map(cb => cb.value);
+
+            // リストに登録
+            hands.push({
+                id: newId,
+                name: name,
+                color: color,
+                beats: beats
+            });
+
+            // 現在いる全ての個体の遺伝子マップに、新しく追加された手(割合0%)を追加
+            creatures.forEach(c => {
+                c.genes[newId] = 0;
+            });
+
+            // フォームのリセットと非表示
+            newHandName.value = '';
+            addHandForm.style.display = 'none';
+
+            // リレンダリング
+            renderHandList();
+            renderDynamicSliders();
+        });
+
+        // フォーム表示非表示制御
+        showAddHandFormBtn.addEventListener('click', () => {
+            populateBeatsCheckboxes();
+            addHandForm.style.display = 'flex';
+        });
+
+        closeAddHandFormBtn.addEventListener('click', () => {
+            addHandForm.style.display = 'none';
+        });
+
+
+        // 固定環境設定用の同期
         const inputPairs = [
-            { slider: document.getElementById('rockWeight'), num: document.getElementById('rockNum') },
-            { slider: document.getElementById('scissorsWeight'), num: document.getElementById('scissorsNum') },
-            { slider: document.getElementById('paperWeight'), num: document.getElementById('paperNum') },
             { slider: document.getElementById('decayInterval'), num: document.getElementById('decayNum') },
             { slider: document.getElementById('mutRate'), num: document.getElementById('mutRateNum') },
             { slider: document.getElementById('mutAmt'), num: document.getElementById('mutAmtNum') }
@@ -728,21 +1006,11 @@
 
             if (hoveredCreature) return;
 
-            const rW = parseFloat(rockSlider.value);
-            const sW = parseFloat(scissorsSlider.value);
-            const pW = parseFloat(paperSlider.value);
-            let sum = rW + sW + pW;
+            // 初期遺伝子を動的スライダーから取得
+            const initGenes = getInitialGenes();
 
-            let r, s, p;
-            if (sum === 0) {
-                r = s = p = 1/3;
-            } else {
-                r = rW / sum;
-                s = sW / sum;
-                p = pW / sum;
-            }
-
-            creatures.push(new Creature(x, y, r, s, p));
+            // 新個体を配置
+            creatures.push(new Creature(x, y, initGenes));
             countBadge.textContent = creatures.length;
         });
 
@@ -755,16 +1023,20 @@
             familyGraph.clear();
         });
 
-        function playJanken(hand1, hand2) {
-            if (hand1 === hand2) return 0;
-            if (
-                (hand1 === 'rock' && hand2 === 'scissors') ||
-                (hand1 === 'scissors' && hand2 === 'paper') ||
-                (hand1 === 'paper' && hand2 === 'rock')
-            ) {
-                return 1;
-            }
-            return -1;
+        // じゃんけん判定（何手あってもbeats配列ベースで一発判定）
+        function playJanken(handId1, handId2) {
+            if (handId1 === handId2) return 0;
+            
+            const h1 = hands.find(h => h.id === handId1);
+            const h2 = hands.find(h => h.id === handId2);
+            if (!h1 || !h2) return 0;
+
+            // 1が2に勝つ場合
+            if (h1.beats.includes(handId2)) return 1;
+            // 2が1に勝つ場合
+            if (h2.beats.includes(handId1)) return -1;
+            
+            return 0; // すくみの関係にない場合は引き分け
         }
 
         function handleCollisions() {
@@ -833,9 +1105,20 @@
             }
 
             const c = hoveredCreature;
-            const rPercent = Math.round(c.genes.rock * 100);
-            const sPercent = Math.round(c.genes.scissors * 100);
-            const pPercent = Math.round(c.genes.paper * 100);
+            
+            // 手の数に合わせて「遺伝子メーター」を動的構築
+            let geneBarsHtml = '';
+            hands.forEach(h => {
+                const percent = Math.round((c.genes[h.id] || 0) * 100);
+                geneBarsHtml += `
+                    <div class="gene-label" style="display: flex; justify-content: space-between; margin-top: 5px;">
+                        <span>${h.name}</span><span>${percent}%</span>
+                    </div>
+                    <div class="gene-bar">
+                        <div class="gene-fill" style="width: ${percent}%; background-color: ${h.color};"></div>
+                    </div>
+                `;
+            });
 
             statusContent.innerHTML = `
                 <div class="status-item" style="margin-top: 10px;">
@@ -858,28 +1141,8 @@
                 </div>
                 
                 <div class="gene-bar-container">
-                    <span class="gene-label">🧬 遺伝子比率 (じゃんけん比率)</span>
-                    
-                    <div class="gene-label" style="display: flex; justify-content: space-between; margin-top: 5px;">
-                        <span>✊ グー</span><span>${rPercent}%</span>
-                    </div>
-                    <div class="gene-bar">
-                        <div class="gene-fill" style="width: ${rPercent}%; background-color: #ff4a4a;"></div>
-                    </div>
-
-                    <div class="gene-label" style="display: flex; justify-content: space-between; margin-top: 5px;">
-                        <span>✌️ チョキ</span><span>${sPercent}%</span>
-                    </div>
-                    <div class="gene-bar">
-                        <div class="gene-fill" style="width: ${sPercent}%; background-color: #4aff4a;"></div>
-                    </div>
-
-                    <div class="gene-label" style="display: flex; justify-content: space-between; margin-top: 5px;">
-                        <span>🖐️ パー</span><span>${pPercent}%</span>
-                    </div>
-                    <div class="gene-bar">
-                        <div class="gene-fill" style="width: ${pPercent}%; background-color: #4a4aff;"></div>
-                    </div>
+                    <span class="gene-label">🧬 遺伝子比率 (動的ブレンド)</span>
+                    ${geneBarsHtml}
                 </div>
             `;
         }
@@ -966,8 +1229,8 @@
                     cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                     cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                    // 親のIDを託して新規個体を生成
-                    const clone = new Creature(cloneX, cloneY, c.genes.rock, c.genes.scissors, c.genes.paper, c.familyId, c.id);
+                    // 親の遺伝子オブジェクトをそのままシャローコピーして新しいクローンを作成
+                    const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.id);
 
                     const mutationRate = parseFloat(mutRateSlider.value) / 100;
                     if (Math.random() < mutationRate) {
@@ -996,6 +1259,9 @@
             requestAnimationFrame(loop);
         }
 
+        // 起動時初期レンダリング
+        renderHandList();
+        renderDynamicSliders();
         loop();
     </script>
 </body>
