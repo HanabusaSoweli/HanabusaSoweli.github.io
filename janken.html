@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (UIレイアウト修正版)</title>
+    <title>じゃんけん生態系シミュレーター (時間変速対応版)</title>
     <style>
         body {
             margin: 0;
@@ -36,21 +36,21 @@
             padding: 15px 20px;
             border-radius: 8px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
+            flex-direction: column; /* 縦並びに整理 */
+            gap: 15px;
             align-items: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
             width: 100%;
             box-sizing: border-box;
         }
         
-        /* 3つの縦並びペアを横に並べるグリッド */
+        /* 3列レイアウト */
         .control-grid {
             display: flex;
             gap: 20px;
+            width: 100%;
+            justify-content: center;
         }
-        /* 各縦並びペア（2段構成） */
         .control-column {
             display: flex;
             flex-direction: column;
@@ -68,14 +68,13 @@
             flex-direction: column;
             align-items: flex-start;
             font-size: 12px;
-            width: 190px; /* 重なり防止のため幅を十分に確保 */
+            width: 190px;
         }
         .slider-group label {
             margin-bottom: 4px;
             font-weight: bold;
         }
         
-        /* スライダーと数値入力を横並びにするラッパー */
         .input-row {
             display: flex;
             align-items: center;
@@ -84,12 +83,11 @@
         }
         .input-row input[type="range"] {
             flex: 1;
-            min-width: 0; /* 【重なり対策】幅の潰し合いを防止 */
+            min-width: 0;
         }
-        /* 数値入力ボックスのスタイル */
         .input-row input[type="number"] {
             width: 45px;
-            min-width: 45px; /* 【重なり対策】縮みきって消えるのを防止 */
+            min-width: 45px;
             background-color: #444;
             color: #fff;
             border: 1px solid #666;
@@ -104,6 +102,50 @@
             outline: none;
         }
 
+        /* 下部コントロールエリア */
+        .control-bottom {
+            display: flex;
+            width: 100%;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #444;
+            padding-top: 12px;
+            margin-top: 5px;
+        }
+
+        /* 時間コントロール */
+        #speed-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #speed-control span {
+            font-size: 13px;
+            font-weight: bold;
+            margin-right: 6px;
+            color: #bbb;
+        }
+        .speed-btn {
+            background-color: #444;
+            color: #ccc;
+            border: 1px solid #555;
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .speed-btn:hover {
+            background-color: #555;
+            color: #fff;
+        }
+        .speed-btn.active {
+            background-color: #3498db;
+            color: #fff;
+            border-color: #2980b9;
+            font-weight: bold;
+        }
+
         #rockWeight { accent-color: #ff4a4a; }
         #scissorsWeight { accent-color: #4aff4a; }
         #paperWeight { accent-color: #4a4aff; }
@@ -112,17 +154,17 @@
         #mutRate { accent-color: #9b59b6; }
         #mutAmt { accent-color: #1abc9c; }
 
-        button {
+        button#clearBtn {
             background-color: #e74c3c;
             color: white;
             border: none;
-            padding: 10px 18px;
+            padding: 8px 18px;
             font-size: 14px;
             border-radius: 4px;
             cursor: pointer;
             transition: background 0.2s;
         }
-        button:hover {
+        button#clearBtn:hover {
             background-color: #c0392b;
         }
         #info {
@@ -196,13 +238,24 @@
                 </div>
             </div>
 
-            <button id="clearBtn">クリア</button>
+            <div class="control-bottom">
+                <div id="speed-control">
+                    <span>⏱️ 時間速度:</span>
+                    <button class="speed-btn" data-speed="0">0倍 (停止)</button>
+                    <button class="speed-btn" data-speed="0.25">1/4倍</button>
+                    <button class="speed-btn" data-speed="0.5">1/2倍</button>
+                    <button class="speed-btn active" data-speed="1">1倍 (標準)</button>
+                    <button class="speed-btn" data-speed="2">2倍</button>
+                    <button class="speed-btn" data-speed="4">4倍</button>
+                </div>
+                <button id="clearBtn">クリア</button>
+            </div>
         </div>
 
         <canvas id="simCanvas" width="800" height="480"></canvas>
         
         <div id="info">
-            【操作方法】数値を設定し、<strong style="color: #fff;">画面をクリックして配置</strong>してください。<br>
+            【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置</strong>してください。時間速度はいつでも変更可能です。<br>
             現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
             <span style="color: #1abc9c; font-weight: bold;">※ 各個体の色は一生固定されます。突然変異は分裂した子どものみに発生します。</span>
         </div>
@@ -223,6 +276,7 @@
         const mutAmtSlider = document.getElementById('mutAmt');
 
         const SPEED_MULT = 0.25; 
+        let timeScale = 1.0; // 時間速度の倍率
 
         class Creature {
             constructor(x, y, r, s, p) {
@@ -238,17 +292,20 @@
 
                 this.genes = { rock: r, scissors: s, paper: p };
                 this.hp = 10;
-                this.lastDecayTime = Date.now();
-                this.birthTime = Date.now();
+                
+                // --- 仮想時間システム ---
+                this.simulatedAge = 0;       // 生まれてからのシミュレーション上の経過時間(ms)
+                this.simulatedLastDecay = 0; // 最後にHPが減少したシミュレーション上の時間(ms)
             }
 
             isInvincible() {
-                return (Date.now() - this.birthTime) < 1500;
+                return this.simulatedAge < 1500; // 生誕1.5秒(1500ms)は無敵
             }
 
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
+            update(simDt) {
+                // 位置の更新（速度倍率を適用）
+                this.x += this.vx * timeScale;
+                this.y += this.vy * timeScale;
 
                 if (this.x - this.radius < 0) {
                     this.x = this.radius;
@@ -267,11 +324,14 @@
                     this.vy *= -1;
                 }
 
-                const now = Date.now();
+                // 時間経過を仮想時計に累積
+                this.simulatedAge += simDt;
+
+                // HP減少判定（シミュレーション時間に連動）
                 const decayIntervalMs = parseFloat(decayIntervalSlider.value) * 1000;
-                if (now - this.lastDecayTime >= decayIntervalMs) {
+                if (this.simulatedAge - this.simulatedLastDecay >= decayIntervalMs) {
                     this.hp -= 1;
-                    this.lastDecayTime = now;
+                    this.simulatedLastDecay += decayIntervalMs; 
                 }
             }
 
@@ -380,6 +440,16 @@
             });
         });
 
+        // 速度ボタンのイベントハンドラー
+        const speedBtns = document.querySelectorAll('.speed-btn');
+        speedBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                speedBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                timeScale = parseFloat(btn.dataset.speed);
+            });
+        });
+
         canvas.addEventListener('mousedown', (e) => {
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -481,12 +551,15 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const nextCreatures = [];
+            // 60FPS基準(約16.67ms)とした場合の、現在の速度倍率に基づく進行時間
+            const simDt = 16.67 * timeScale;
 
             for (let i = 0; i < creatures.length; i++) {
                 const c = creatures[i];
-                c.update();
+                c.update(simDt);
                 c.draw();
 
+                // 分裂（クローン）処理
                 if (c.hp >= 15) {
                     c.hp -= 10;
 
@@ -516,7 +589,10 @@
 
             creatures = nextCreatures;
 
-            handleCollisions();
+            // 時間が動いている時のみ当たり判定を処理
+            if (timeScale > 0) {
+                handleCollisions();
+            }
 
             countBadge.textContent = creatures.length;
 
