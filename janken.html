@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (物理改善版)</title>
+    <title>じゃんけん生態系シミュレーター (ジェネシス版)</title>
     <style>
         body {
             margin: 0;
@@ -17,69 +17,138 @@
             height: 100vh;
             overflow: hidden;
         }
+        #container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
         canvas {
             border: 2px solid #555;
             background-color: #111;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            cursor: crosshair; /* クリックしやすいようにカーソルを変更 */
+        }
+        #controls {
+            background-color: #333;
+            padding: 12px 20px;
+            border-radius: 8px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            font-size: 13px;
+        }
+        .slider-group label {
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+        .slider-group input {
+            width: 120px;
+        }
+        /* スライダーの色をカスタム（直感的になるように） */
+        #rockWeight { accent-color: #ff4a4a; }
+        #scissorsWeight { accent-color: #4aff4a; }
+        #paperWeight { accent-color: #4a4aff; }
+
+        button {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #c0392b;
         }
         #info {
-            margin-top: 10px;
-            font-size: 14px;
+            font-size: 13px;
             text-align: center;
-            line-height: 1.5;
+            line-height: 1.4;
+            color: #ccc;
+        }
+        .count-badge {
+            font-weight: bold;
+            color: #f1c40f;
         }
     </style>
 </head>
 <body>
 
-    <h2 style="margin: 5px;">じゃんけん生態系シミュレーター</h2>
-    <canvas id="simCanvas" width="800" height="600"></canvas>
-    <div id="info">
-        赤: グー多め | 緑: チョキ多め | 青: パー多め<br>
-        衝突するとじゃんけんをして、負けた方が勝った方の遺伝子に少し染まります。<br>
-        速度を1/4に落とし、衝突時の跳ね返りを自然にしました。
+    <div id="container">
+        <h2 style="margin: 0;">じゃんけん生態系シミュレーター</h2>
+        
+        <div id="controls">
+            <div class="slider-group">
+                <label>✊ グー (赤): <span id="rockVal">33%</span></label>
+                <input type="range" id="rockWeight" min="0" max="100" value="50">
+            </div>
+            <div class="slider-group">
+                <label>✌️ チョキ (緑): <span id="scissorsVal">33%</span></label>
+                <input type="range" id="scissorsWeight" min="0" max="100" value="50">
+            </div>
+            <div class="slider-group">
+                <label>🖐️ パー (青): <span id="paperVal">34%</span></label>
+                <input type="range" id="paperWeight" min="0" max="100" value="50">
+            </div>
+            <button id="clearBtn">クリア (全消去)</button>
+        </div>
+
+        <canvas id="simCanvas" width="800" height="500"></canvas>
+        
+        <div id="info">
+            【操作方法】スライダーで確率の比率を決め、<strong style="color: #fff;">黒い画面をクリック</strong>して生き物を配置してください。<br>
+            現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
+            赤: グー多め / 緑: チョキ多め / 青: パー多め
+        </div>
     </div>
 
     <script>
         const canvas = document.getElementById('simCanvas');
         const ctx = canvas.getContext('2d');
 
-        const NUM_CREATURES = 50; // 生き物の数
-        const MUTATION_RATE = 0.05; // 突然変異が起きる確率 (5%)
+        // UI要素
+        const rockSlider = document.getElementById('rockWeight');
+        const scissorsSlider = document.getElementById('scissorsWeight');
+        const paperSlider = document.getElementById('paperWeight');
+        const rockVal = document.getElementById('rockVal');
+        const scissorsVal = document.getElementById('scissorsVal');
+        const paperVal = document.getElementById('paperVal');
+        const clearBtn = document.getElementById('clearBtn');
+        const countBadge = document.getElementById('creatureCount');
+
+        const MUTATION_RATE = 0.05; // 突然変異確率 (5%)
         const MUTATION_AMOUNT = 0.1; // 突然変異時の変化量 (10%)
-        const INFLUENCE_RATE = 0.15; // 負けた方が勝った方に染まる割合 (少し控えめに15%)
-        
-        // --- 修正点2: 速度調整用係数 (1/4倍) ---
-        const SPEED_MULT = 0.25;
+        const INFLUENCE_RATE = 0.15; // 敗者が勝者に染まる割合 (15%)
+        const SPEED_MULT = 0.25; // 速度1/4倍
 
         class Creature {
-            constructor(x, y) {
+            // コンストラクタで遺伝子（r, s, p）を直接受け取るように変更
+            constructor(x, y, r, s, p) {
                 this.x = x;
                 this.y = y;
                 this.radius = 8;
-                this.mass = 1; // 質量 (衝突計算用。全て同じ)
+                this.mass = 1;
                 
-                // 初期の移動速度をランダムに設定
                 const angle = Math.random() * Math.PI * 2;
-                // --- 修正点2: 初期速度を1/4にする ---
                 const speed = (1 + Math.random() * 2) * SPEED_MULT; 
                 this.vx = Math.cos(angle) * speed;
                 this.vy = Math.sin(angle) * speed;
 
-                // 初期遺伝子（グー、チョキ、パーの確率。足して1.0）
-                // 最初は少しランダムに偏りを持たせる
-                let r = Math.random();
-                let s = Math.random();
-                let p = Math.random();
-                let sum = r + s + p;
-                this.genes = {
-                    rock: r / sum,
-                    scissors: s / sum,
-                    paper: p / sum
-                };
+                // 指定された比率（正規化済み）をセット
+                this.genes = { rock: r, scissors: s, paper: p };
             }
 
-            // 移動と画面端でのバウンド
             update() {
                 this.x += this.vx;
                 this.y += this.vy;
@@ -102,25 +171,22 @@
                 }
             }
 
-            // 描画：遺伝子の割合に応じて RGB (赤・緑・青) に着色
             draw() {
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 
-                // 遺伝子を色に変換 (0〜255)
                 const red = Math.floor(this.genes.rock * 255);
                 const green = Math.floor(this.genes.scissors * 255);
                 const blue = Math.floor(this.genes.paper * 255);
                 
                 ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
                 ctx.fill();
-                ctx.strokeStyle = '#fff'; // 輪郭線を白に
+                ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 1;
                 ctx.stroke();
                 ctx.closePath();
             }
 
-            // 自分の遺伝子に基づいて、出す手を決定する
             decideHand() {
                 const rand = Math.random();
                 if (rand < this.genes.rock) {
@@ -132,7 +198,6 @@
                 }
             }
 
-            // 突然変異
             mutate() {
                 const keys = ['rock', 'scissors', 'paper'];
                 const loseAttr = keys[Math.floor(Math.random() * keys.length)];
@@ -141,24 +206,78 @@
                     gainAttr = keys[Math.floor(Math.random() * keys.length)];
                 } while (gainAttr === loseAttr);
 
-                // 実際に減らせる限界を計算（0未満にならないように）
                 const actualN = Math.min(MUTATION_AMOUNT, this.genes[loseAttr]);
                 this.genes[loseAttr] -= actualN;
                 this.genes[gainAttr] += actualN;
             }
         }
 
-        // 生き物たちの配列を初期化
+        // --- 修正点: 最初は何もいない空の配列からスタート ---
         const creatures = [];
-        for (let i = 0; i < NUM_CREATURES; i++) {
-            creatures.push(new Creature(
-                Math.random() * (canvas.width - 40) + 20,
-                Math.random() * (canvas.height - 40) + 20
-            ));
+
+        // スライダーの値から、実際のパーセンテージ（比率）をリアルタイム計算して表示する関数
+        function updateSliderLabels() {
+            const r = parseFloat(rockSlider.value);
+            const s = parseFloat(scissorsSlider.value);
+            const p = parseFloat(paperSlider.value);
+            const sum = r + s + p;
+
+            if (sum === 0) {
+                rockVal.textContent = "0%";
+                scissorsVal.textContent = "0%";
+                paperVal.textContent = "0%";
+                return;
+            }
+
+            rockVal.textContent = Math.round((r / sum) * 100) + "%";
+            scissorsVal.textContent = Math.round((s / sum) * 100) + "%";
+            paperVal.textContent = Math.round((p / sum) * 100) + "%";
         }
 
-        // 2つの手でじゃんけん勝負
-        // 戻り値: 1（hand1の勝ち）, -1（hand2の勝ち）, 0（あいこ）
+        // スライダーを動かしたときに表示を更新するイベント
+        [rockSlider, scissorsSlider, paperSlider].forEach(slider => {
+            slider.addEventListener('input', updateSliderLabels);
+        });
+
+        // 初期表示用
+        updateSliderLabels();
+
+        // --- 新機能: クリックで生き物を追加する処理 ---
+        canvas.addEventListener('mousedown', (e) => {
+            // キャンバス内のクリック相対座標を取得
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // スライダーの比率を取得して正規化（合計1.0にする）
+            const rW = parseFloat(rockSlider.value);
+            const sW = parseFloat(scissorsSlider.value);
+            const pW = parseFloat(paperSlider.value);
+            let sum = rW + sW + pW;
+
+            let r, s, p;
+            if (sum === 0) {
+                // すべて0の場合は均等（1/3ずつ）にする
+                r = s = p = 1/3;
+            } else {
+                r = rW / sum;
+                s = sW / sum;
+                p = pW / sum;
+            }
+
+            // 新しい生き物を配列に追加
+            creatures.push(new Creature(x, y, r, s, p));
+            
+            // 個体数表示を更新
+            countBadge.textContent = creatures.length;
+        });
+
+        // --- 新機能: 全クリアボタン ---
+        clearBtn.addEventListener('click', () => {
+            creatures.length = 0; // 配列を空にする
+            countBadge.textContent = 0;
+        });
+
         function playJanken(hand1, hand2) {
             if (hand1 === hand2) return 0;
             if (
@@ -171,70 +290,55 @@
             return -1;
         }
 
-        // 衝突判定と相互作用の処理
         function handleCollisions() {
             for (let i = 0; i < creatures.length; i++) {
                 for (let j = i + 1; j < creatures.length; j++) {
                     const c1 = creatures[i];
                     const c2 = creatures[j];
 
-                    // 円同士の距離を計算
                     const dx = c2.x - c1.x;
                     const dy = c2.y - c1.y;
                     const distance = Math.hypot(dx, dy);
                     const minDist = c1.radius + c2.radius;
 
                     if (distance < minDist) {
-                        // 1. --- 修正点1: 自然な跳ね返り (弾性衝突) ---
-                        
-                        // 法線単位ベクトル (2つの中心を結ぶ方向)
+                        // 弾性衝突の物理挙動
                         const nx = dx / distance;
                         const ny = dy / distance;
-
-                        // 相対速度
                         const rvx = c2.vx - c1.vx;
                         const rvy = c2.vy - c1.vy;
-
-                        // 法線方向の相対速度 (ドット積)
                         const velAlongNormal = rvx * nx + rvy * ny;
 
-                        // 生き物同士が近づいている場合のみ跳ね返す (めり込み防止)
                         if (velAlongNormal < 0) {
-                            // 反発係数 (1.0 = 完全弾性衝突)
                             const restitution = 1.0;
-                            // インパルスの大きさを計算
                             let jImpulse = -(1 + restitution) * velAlongNormal;
-                            jImpulse /= (1 / c1.mass + 1 / c2.mass);
+                            jImpulse /= (2); // 質量1+1=2
 
-                            // インパルスを速度ベクトルに適用
                             const impulseX = jImpulse * nx;
                             const impulseY = jImpulse * ny;
-                            c1.vx -= (1 / c1.mass) * impulseX;
-                            c1.vy -= (1 / c1.mass) * impulseY;
-                            c2.vx += (1 / c2.mass) * impulseX;
-                            c2.vy += (1 / c2.mass) * impulseY;
+                            c1.vx -= impulseX;
+                            c1.vy -= impulseY;
+                            c2.vx += impulseX;
+                            c2.vy += impulseY;
                         }
 
-                        // 重なりを解消する (めり込みによる連続衝突を防止)
                         const overlap = (minDist - distance) / 2;
                         c1.x -= nx * overlap;
                         c1.y -= ny * overlap;
                         c2.x += nx * overlap;
                         c2.y += ny * overlap;
 
-
-                        // 2. じゃんけんバトル (ロジックは維持)
+                        // じゃんけん処理
                         const hand1 = c1.decideHand();
                         const hand2 = c2.decideHand();
                         const result = playJanken(hand1, hand2);
 
                         if (result === 1) {
-                            absorb(c1, c2); // c1の勝ち：c2の遺伝子がc1に近づく
+                            absorb(c1, c2);
                         } else if (result === -1) {
-                            absorb(c2, c1); // c2の勝ち：c1の遺伝子がc2に近づく
+                            absorb(c2, c1);
                         }
 
-                        // 3. 確率で突然変異
                         if (Math.random() < MUTATION_RATE) c1.mutate();
                         if (Math.random() < MUTATION_RATE) c2.mutate();
                     }
@@ -242,37 +346,29 @@
             }
         }
 
-        // 勝者(winner)が敗者(loser)に遺伝子を浸透させる
         function absorb(winner, loser) {
             for (const key in loser.genes) {
-                // 敗者の遺伝子を勝者に少し近づける
                 loser.genes[key] += (winner.genes[key] - loser.genes[key]) * INFLUENCE_RATE;
             }
-            // 誤差をなくすため、合計が1.0になるよう再正規化
             const sum = loser.genes.rock + loser.genes.scissors + loser.genes.paper;
             loser.genes.rock /= sum;
             loser.genes.scissors /= sum;
             loser.genes.paper /= sum;
         }
 
-        // メインループ
         function loop() {
-            // 画面をクリア
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 更新と描画
             creatures.forEach(c => {
                 c.update();
                 c.draw();
             });
 
-            // 衝突判定
             handleCollisions();
 
             requestAnimationFrame(loop);
         }
 
-        // スタート
         loop();
     </script>
 </body>
