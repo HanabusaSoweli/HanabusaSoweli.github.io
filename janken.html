@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (高度設定版)</title>
+    <title>じゃんけん生態系シミュレーター (世代交代変異版)</title>
     <style>
         body {
             margin: 0;
@@ -36,7 +36,7 @@
             padding: 15px 20px;
             border-radius: 8px;
             display: flex;
-            flex-wrap: wrap; /* スライダーが増えたので折り返せるように */
+            flex-wrap: wrap;
             gap: 15px;
             justify-content: center;
             align-items: center;
@@ -74,7 +74,6 @@
         #scissorsWeight { accent-color: #4aff4a; }
         #paperWeight { accent-color: #4a4aff; }
         
-        /* 環境設定スライダーの色 */
         #decayInterval { accent-color: #f39c12; }
         #mutRate { accent-color: #9b59b6; }
         #mutAmt { accent-color: #1abc9c; }
@@ -131,7 +130,7 @@
                     <input type="range" id="decayInterval" min="1" max="30" value="10">
                 </div>
                 <div class="slider-group">
-                    <label>⚡ 突然変異率: <span id="mutRateVal">5</span>%</label>
+                    <label>⚡ 分裂時変異率: <span id="mutRateVal">5</span>%</label>
                     <input type="range" id="mutRate" min="0" max="100" value="5">
                 </div>
                 <div class="slider-group">
@@ -146,9 +145,9 @@
         <canvas id="simCanvas" width="800" height="480"></canvas>
         
         <div id="info">
-            【操作方法】スライダーで遺伝子や環境ルールを設定し、<strong style="color: #fff;">画面をクリックして配置</strong>してください。<br>
+            【操作方法】スライダーを設定し、<strong style="color: #fff;">画面をクリックして配置</strong>してください。<br>
             現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
-            <span style="color: #f1c40f; font-weight: bold;">生まれたての個体（半透明）は1.5秒間、無敵（衝突しない）になります。</span>
+            <span style="color: #f1c40f; font-weight: bold;">※ 突然変異は分裂してクローンが生まれた瞬間のみ、確率で発生します。</span>
         </div>
     </div>
 
@@ -156,7 +155,6 @@
         const canvas = document.getElementById('simCanvas');
         const ctx = canvas.getContext('2d');
 
-        // UI要素（遺伝子）
         const rockSlider = document.getElementById('rockWeight');
         const scissorsSlider = document.getElementById('scissorsWeight');
         const paperSlider = document.getElementById('paperWeight');
@@ -166,7 +164,6 @@
         const clearBtn = document.getElementById('clearBtn');
         const countBadge = document.getElementById('creatureCount');
 
-        // UI要素（環境設定 - 追加）
         const decayIntervalSlider = document.getElementById('decayInterval');
         const mutRateSlider = document.getElementById('mutRate');
         const mutAmtSlider = document.getElementById('mutAmt');
@@ -174,8 +171,8 @@
         const mutRateVal = document.getElementById('mutRateVal');
         const mutAmtVal = document.getElementById('mutAmtVal');
 
-        const SPEED_MULT = 0.25; // 速度1/4倍
-        const INFLUENCE_RATE = 0.15; // 敗者が勝者に染まる割合 (15%)
+        const SPEED_MULT = 0.25; 
+        const INFLUENCE_RATE = 0.15; 
 
         class Creature {
             constructor(x, y, r, s, p) {
@@ -190,15 +187,11 @@
                 this.vy = Math.sin(angle) * speed;
 
                 this.genes = { rock: r, scissors: s, paper: p };
-
                 this.hp = 10;
                 this.lastDecayTime = Date.now();
-                
-                // --- 新機能: 誕生時刻を記録（衝突無敵時間用） ---
                 this.birthTime = Date.now();
             }
 
-            // 誕生から1.5秒（1500ミリ秒）の間は無敵かどうか
             isInvincible() {
                 return (Date.now() - this.birthTime) < 1500;
             }
@@ -224,7 +217,6 @@
                     this.vy *= -1;
                 }
 
-                // --- リアルタイム変化対応: UIからHP減少間隔を取得 ---
                 const now = Date.now();
                 const decayIntervalMs = parseFloat(decayIntervalSlider.value) * 1000;
                 if (now - this.lastDecayTime >= decayIntervalMs) {
@@ -234,12 +226,11 @@
             }
 
             draw() {
-                ctx.save(); // 描画設定の一時保存
+                ctx.save();
 
-                // --- 新機能: 無敵状態（生まれたて）なら半透明にする ---
                 const invincible = this.isInvincible();
                 if (invincible) {
-                    ctx.globalAlpha = 0.4; // 透明度40%
+                    ctx.globalAlpha = 0.4; 
                 }
 
                 ctx.beginPath();
@@ -252,19 +243,17 @@
                 ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
                 ctx.fill();
                 
-                // 無敵中は枠線を少し目立つ黄色っぽく、通常時は白にする
                 ctx.strokeStyle = invincible ? '#f1c40f' : '#fff';
                 ctx.lineWidth = invincible ? 1.5 : 1;
                 ctx.stroke();
                 ctx.closePath();
 
-                // 体力表示
                 ctx.fillStyle = invincible ? '#f1c40f' : '#ccc';
                 ctx.font = '10px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(Math.round(this.hp), this.x, this.y - this.radius - 4);
 
-                ctx.restore(); // 描画設定を元に戻す（他の描画に半透明が影響しないように）
+                ctx.restore(); 
             }
 
             decideHand() {
@@ -278,8 +267,8 @@
                 }
             }
 
-            // --- リアルタイム変化対応: 突然変異処理 ---
-            mutate() {
+            // 突然変異処理 (変化幅を外部から受け取るよう修正)
+            mutate(mutationAmount) {
                 const keys = ['rock', 'scissors', 'paper'];
                 const loseAttr = keys[Math.floor(Math.random() * keys.length)];
                 let gainAttr;
@@ -287,18 +276,20 @@
                     gainAttr = keys[Math.floor(Math.random() * keys.length)];
                 } while (gainAttr === loseAttr);
 
-                // UIから突然変異の幅を取得 (例: 10% = 0.10)
-                const mutationAmount = parseFloat(mutAmtSlider.value) / 100;
-
                 const actualN = Math.min(mutationAmount, this.genes[loseAttr]);
                 this.genes[loseAttr] -= actualN;
                 this.genes[gainAttr] += actualN;
+
+                // 合計を確実に 1.0 に再調整
+                const sum = this.genes.rock + this.genes.scissors + this.genes.paper;
+                this.genes.rock /= sum;
+                this.genes.scissors /= sum;
+                this.genes.paper /= sum;
             }
         }
 
         let creatures = [];
 
-        // ラベルのリアルタイム更新
         function updateLabels() {
             rockVal.textContent = rockSlider.value;
             scissorsVal.textContent = scissorsSlider.value;
@@ -309,14 +300,12 @@
             mutAmtVal.textContent = mutAmtSlider.value;
         }
 
-        // すべてのスライダーにイベント登録
         [rockSlider, scissorsSlider, paperSlider, decayIntervalSlider, mutRateSlider, mutAmtSlider].forEach(slider => {
             slider.addEventListener('input', updateLabels);
         });
 
         updateLabels();
 
-        // 画面クリックでスポーン
         canvas.addEventListener('mousedown', (e) => {
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -333,7 +322,6 @@
             } else {
                 r = rW / sum;
                 s = sW / sum;
-                p = pW / sum;
             }
 
             creatures.push(new Creature(x, y, r, s, p));
@@ -358,15 +346,11 @@
         }
 
         function handleCollisions() {
-            // UIから現在の突然変異確率を取得
-            const mutationRate = parseFloat(mutRateSlider.value) / 100;
-
             for (let i = 0; i < creatures.length; i++) {
                 for (let j = i + 1; j < creatures.length; j++) {
                     const c1 = creatures[i];
                     const c2 = creatures[j];
 
-                    // --- 新機能: どちらかが無敵(生まれたて)なら衝突計算を完全にスキップ ---
                     if (c1.isInvincible() || c2.isInvincible()) {
                         continue;
                     }
@@ -416,9 +400,7 @@
                             c1.hp -= 1;
                         }
 
-                        // スライダーの突然変異率を適用
-                        if (Math.random() < mutationRate) c1.mutate();
-                        if (Math.random() < mutationRate) c2.mutate();
+                        // --- 修正点1: 衝突時の突然変異 (c1.mutate / c2.mutate) を完全に廃止 ---
                     }
                 }
             }
@@ -434,7 +416,6 @@
             loser.genes.paper /= sum;
         }
 
-        // メインループ
         function loop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -449,17 +430,24 @@
                 if (c.hp >= 15) {
                     c.hp -= 10;
 
-                    // 重ならないようにちょっとだけずらした位置を計算
                     const angle = Math.random() * Math.PI * 2;
-                    const offset = c.radius * 1.5; // 近すぎず遠すぎず
+                    const offset = c.radius * 1.5; 
                     let cloneX = c.x + Math.cos(angle) * offset;
                     let cloneY = c.y + Math.sin(angle) * offset;
 
                     cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                     cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                    // クローン生成（ここで新個体に誕生時刻が記録され、1.5秒間衝突が無効化される）
+                    // 親の遺伝子をベースにクローンを生成
                     const clone = new Creature(cloneX, cloneY, c.genes.rock, c.genes.scissors, c.genes.paper);
+
+                    // --- 修正点2: 突然変異は分裂して生まれた瞬間のクローンのみに適用 ---
+                    const mutationRate = parseFloat(mutRateSlider.value) / 100;
+                    if (Math.random() < mutationRate) {
+                        const mutationAmount = parseFloat(mutAmtSlider.value) / 100;
+                        clone.mutate(mutationAmount); // クローン側だけ突然変異させる
+                    }
+
                     nextCreatures.push(clone);
                 }
 
