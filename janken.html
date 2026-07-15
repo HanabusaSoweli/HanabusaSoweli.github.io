@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (数値入力対応版)</title>
+    <title>じゃんけん生態系シミュレーター (UIレイアウト修正版)</title>
     <style>
         body {
             margin: 0;
@@ -37,34 +37,44 @@
             border-radius: 8px;
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 20px;
             justify-content: center;
             align-items: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
             width: 100%;
             box-sizing: border-box;
         }
-        .control-block {
+        
+        /* 3つの縦並びペアを横に並べるグリッド */
+        .control-grid {
             display: flex;
-            gap: 15px;
-            border-right: 1px solid #555;
-            padding-right: 15px;
+            gap: 20px;
         }
-        .control-block:last-of-type {
+        /* 各縦並びペア（2段構成） */
+        .control-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            border-right: 1px solid #555;
+            padding-right: 20px;
+        }
+        .control-column:last-of-type {
             border-right: none;
             padding-right: 0;
         }
+
         .slider-group {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             font-size: 12px;
-            width: 165px; /* 入力欄追加に伴い少し幅を広げました */
+            width: 190px; /* 重なり防止のため幅を十分に確保 */
         }
         .slider-group label {
             margin-bottom: 4px;
             font-weight: bold;
         }
+        
         /* スライダーと数値入力を横並びにするラッパー */
         .input-row {
             display: flex;
@@ -74,10 +84,12 @@
         }
         .input-row input[type="range"] {
             flex: 1;
+            min-width: 0; /* 【重なり対策】幅の潰し合いを防止 */
         }
         /* 数値入力ボックスのスタイル */
         .input-row input[type="number"] {
             width: 45px;
+            min-width: 45px; /* 【重なり対策】縮みきって消えるのを防止 */
             background-color: #444;
             color: #fff;
             border: 1px solid #666;
@@ -85,6 +97,7 @@
             padding: 3px;
             font-size: 11px;
             text-align: center;
+            box-sizing: border-box;
         }
         .input-row input[type="number"]:focus {
             border-color: #3498db;
@@ -130,50 +143,55 @@
         <h2 style="margin: 0;">じゃんけん生態系シミュレーター</h2>
         
         <div id="controls">
-            <div class="control-block">
-                <div class="slider-group">
-                    <label>✊ グー重み</label>
-                    <div class="input-row">
-                        <input type="range" id="rockWeight" min="0" max="100" value="50">
-                        <input type="number" id="rockNum" min="0" max="100" value="50">
+            <div class="control-grid">
+                <div class="control-column">
+                    <div class="slider-group">
+                        <label>✊ グー重み</label>
+                        <div class="input-row">
+                            <input type="range" id="rockWeight" min="0" max="100" value="50">
+                            <input type="number" id="rockNum" min="0" max="100" value="50">
+                        </div>
+                    </div>
+                    <div class="slider-group">
+                        <label>⏳ HP減少間隔 (秒)</label>
+                        <div class="input-row">
+                            <input type="range" id="decayInterval" min="1" max="30" value="10">
+                            <input type="number" id="decayNum" min="1" max="30" value="10">
+                        </div>
                     </div>
                 </div>
-                <div class="slider-group">
-                    <label>✌️ チョキ重み</label>
-                    <div class="input-row">
-                        <input type="range" id="scissorsWeight" min="0" max="100" value="50">
-                        <input type="number" id="scissorsNum" min="0" max="100" value="50">
-                    </div>
-                </div>
-                <div class="slider-group">
-                    <label>🖐️ パー重み</label>
-                    <div class="input-row">
-                        <input type="range" id="paperWeight" min="0" max="100" value="50">
-                        <input type="number" id="paperNum" min="0" max="100" value="50">
-                    </div>
-                </div>
-            </div>
 
-            <div class="control-block">
-                <div class="slider-group">
-                    <label>⏳ HP減少間隔 (秒)</label>
-                    <div class="input-row">
-                        <input type="range" id="decayInterval" min="1" max="30" value="10">
-                        <input type="number" id="decayNum" min="1" max="30" value="10">
+                <div class="control-column">
+                    <div class="slider-group">
+                        <label>✌️ チョキ重み</label>
+                        <div class="input-row">
+                            <input type="range" id="scissorsWeight" min="0" max="100" value="50">
+                            <input type="number" id="scissorsNum" min="0" max="100" value="50">
+                        </div>
+                    </div>
+                    <div class="slider-group">
+                        <label>⚡ 分裂時変異率 (%)</label>
+                        <div class="input-row">
+                            <input type="range" id="mutRate" min="0" max="100" value="5">
+                            <input type="number" id="mutRateNum" min="0" max="100" value="5">
+                        </div>
                     </div>
                 </div>
-                <div class="slider-group">
-                    <label>⚡ 分裂時変異率 (%)</label>
-                    <div class="input-row">
-                        <input type="range" id="mutRate" min="0" max="100" value="5">
-                        <input type="number" id="mutRateNum" min="0" max="100" value="5">
+
+                <div class="control-column">
+                    <div class="slider-group">
+                        <label>🖐️ パー重み</label>
+                        <div class="input-row">
+                            <input type="range" id="paperWeight" min="0" max="100" value="50">
+                            <input type="number" id="paperNum" min="0" max="100" value="50">
+                        </div>
                     </div>
-                </div>
-                <div class="slider-group">
-                    <label>🔮 変異変化幅 (%)</label>
-                    <div class="input-row">
-                        <input type="range" id="mutAmt" min="1" max="50" value="10">
-                        <input type="number" id="mutAmtNum" min="1" max="50" value="10">
+                    <div class="slider-group">
+                        <label>🔮 変異変化幅 (%)</label>
+                        <div class="input-row">
+                            <input type="range" id="mutAmt" min="1" max="50" value="10">
+                            <input type="number" id="mutAmtNum" min="1" max="50" value="10">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -184,7 +202,7 @@
         <canvas id="simCanvas" width="800" height="480"></canvas>
         
         <div id="info">
-            【操作方法】数値を設定し、<strong style="color: #fff;">画面をクリックして配置</strong>してください（スライダー・直接入力のどちらでも変更可能です）。<br>
+            【操作方法】数値を設定し、<strong style="color: #fff;">画面をクリックして配置</strong>してください。<br>
             現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
             <span style="color: #1abc9c; font-weight: bold;">※ 各個体の色は一生固定されます。突然変異は分裂した子どものみに発生します。</span>
         </div>
@@ -320,7 +338,7 @@
 
         let creatures = [];
 
-        // --- 【双方向同期システム】スライダーと数値ボックスの連動処理 ---
+        // 双方向同期システム
         const inputPairs = [
             { slider: document.getElementById('rockWeight'), num: document.getElementById('rockNum') },
             { slider: document.getElementById('scissorsWeight'), num: document.getElementById('scissorsNum') },
@@ -331,12 +349,10 @@
         ];
 
         inputPairs.forEach(pair => {
-            // 1. スライダーを動かした時 -> 数値ボックスに値を送る
             pair.slider.addEventListener('input', () => {
                 pair.num.value = pair.slider.value;
             });
 
-            // 2. 数値ボックスに入力した時 -> スライダーに値を送る（範囲外チェックも自動適用）
             pair.num.addEventListener('input', () => {
                 let val = parseFloat(pair.num.value);
                 const min = parseFloat(pair.slider.min);
@@ -344,14 +360,12 @@
 
                 if (isNaN(val)) return;
 
-                // 範囲外の数値を丸める処理
                 if (val < min) val = min;
                 if (val > max) val = max;
 
                 pair.slider.value = val;
             });
 
-            // 入力中ではなく、決定（フォーカスが外れた）時に異常値を自動補正する
             pair.num.addEventListener('blur', () => {
                 if (pair.num.value === '' || isNaN(parseFloat(pair.num.value))) {
                     pair.num.value = pair.slider.value;
@@ -473,7 +487,6 @@
                 c.update();
                 c.draw();
 
-                // 分裂（クローン）処理
                 if (c.hp >= 15) {
                     c.hp -= 10;
 
