@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (サバイバル版)</title>
+    <title>じゃんけん生態系シミュレーター (高度設定版)</title>
     <style>
         body {
             margin: 0;
@@ -22,6 +22,8 @@
             flex-direction: column;
             align-items: center;
             gap: 10px;
+            width: 90%;
+            max-width: 1000px;
         }
         canvas {
             border: 2px solid #555;
@@ -31,18 +33,33 @@
         }
         #controls {
             background-color: #333;
-            padding: 12px 20px;
+            padding: 15px 20px;
             border-radius: 8px;
             display: flex;
-            gap: 20px;
+            flex-wrap: wrap; /* スライダーが増えたので折り返せるように */
+            gap: 15px;
+            justify-content: center;
             align-items: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .control-block {
+            display: flex;
+            gap: 15px;
+            border-right: 1px solid #555;
+            padding-right: 15px;
+        }
+        .control-block:last-of-type {
+            border-right: none;
+            padding-right: 0;
         }
         .slider-group {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            font-size: 13px;
+            font-size: 12px;
+            width: 130px;
         }
         .slider-group label {
             margin-bottom: 4px;
@@ -51,17 +68,22 @@
             width: 100%;
         }
         .slider-group input {
-            width: 120px;
+            width: 100%;
         }
         #rockWeight { accent-color: #ff4a4a; }
         #scissorsWeight { accent-color: #4aff4a; }
         #paperWeight { accent-color: #4a4aff; }
+        
+        /* 環境設定スライダーの色 */
+        #decayInterval { accent-color: #f39c12; }
+        #mutRate { accent-color: #9b59b6; }
+        #mutAmt { accent-color: #1abc9c; }
 
         button {
             background-color: #e74c3c;
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 10px 18px;
             font-size: 14px;
             border-radius: 4px;
             cursor: pointer;
@@ -88,27 +110,45 @@
         <h2 style="margin: 0;">じゃんけん生態系シミュレーター</h2>
         
         <div id="controls">
-            <div class="slider-group">
-                <label>✊ グー (赤): <span id="rockVal">50</span></label>
-                <input type="range" id="rockWeight" min="0" max="100" value="50">
+            <div class="control-block">
+                <div class="slider-group">
+                    <label>✊ グー: <span id="rockVal">50</span></label>
+                    <input type="range" id="rockWeight" min="0" max="100" value="50">
+                </div>
+                <div class="slider-group">
+                    <label>✌️ チョキ: <span id="scissorsVal">50</span></label>
+                    <input type="range" id="scissorsWeight" min="0" max="100" value="50">
+                </div>
+                <div class="slider-group">
+                    <label>🖐️ パー: <span id="paperVal">50</span></label>
+                    <input type="range" id="paperWeight" min="0" max="100" value="50">
+                </div>
             </div>
-            <div class="slider-group">
-                <label>✌️ チョキ (緑): <span id="scissorsVal">50</span></label>
-                <input type="range" id="scissorsWeight" min="0" max="100" value="50">
+
+            <div class="control-block">
+                <div class="slider-group">
+                    <label>⏳ HP減少間隔: <span id="decayVal">10</span>秒</label>
+                    <input type="range" id="decayInterval" min="1" max="30" value="10">
+                </div>
+                <div class="slider-group">
+                    <label>⚡ 突然変異率: <span id="mutRateVal">5</span>%</label>
+                    <input type="range" id="mutRate" min="0" max="100" value="5">
+                </div>
+                <div class="slider-group">
+                    <label>🔮 変異の変化幅: <span id="mutAmtVal">10</span>%</label>
+                    <input type="range" id="mutAmt" min="1" max="50" value="10">
+                </div>
             </div>
-            <div class="slider-group">
-                <label>🖐️ パー (青): <span id="paperVal">50</span></label>
-                <input type="range" id="paperWeight" min="0" max="100" value="50">
-            </div>
-            <button id="clearBtn">クリア (全消去)</button>
+
+            <button id="clearBtn">クリア</button>
         </div>
 
-        <canvas id="simCanvas" width="800" height="500"></canvas>
+        <canvas id="simCanvas" width="800" height="480"></canvas>
         
         <div id="info">
-            【操作方法】スライダーで重みを決め、<strong style="color: #fff;">黒い画面をクリック</strong>して生き物を配置してください。<br>
+            【操作方法】スライダーで遺伝子や環境ルールを設定し、<strong style="color: #fff;">画面をクリックして配置</strong>してください。<br>
             現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
-            初期体力: 10（10秒で-1、勝つと+1、負けると-1。0で消滅。15以上で分裂！）
+            <span style="color: #f1c40f; font-weight: bold;">生まれたての個体（半透明）は1.5秒間、無敵（衝突しない）になります。</span>
         </div>
     </div>
 
@@ -116,7 +156,7 @@
         const canvas = document.getElementById('simCanvas');
         const ctx = canvas.getContext('2d');
 
-        // UI要素
+        // UI要素（遺伝子）
         const rockSlider = document.getElementById('rockWeight');
         const scissorsSlider = document.getElementById('scissorsWeight');
         const paperSlider = document.getElementById('paperWeight');
@@ -126,10 +166,16 @@
         const clearBtn = document.getElementById('clearBtn');
         const countBadge = document.getElementById('creatureCount');
 
-        const MUTATION_RATE = 0.05; // 突然変異確率 (5%)
-        const MUTATION_AMOUNT = 0.1; // 突然変異時の変化量 (10%)
-        const INFLUENCE_RATE = 0.15; // 敗者が勝者に染まる割合 (15%)
+        // UI要素（環境設定 - 追加）
+        const decayIntervalSlider = document.getElementById('decayInterval');
+        const mutRateSlider = document.getElementById('mutRate');
+        const mutAmtSlider = document.getElementById('mutAmt');
+        const decayVal = document.getElementById('decayVal');
+        const mutRateVal = document.getElementById('mutRateVal');
+        const mutAmtVal = document.getElementById('mutAmtVal');
+
         const SPEED_MULT = 0.25; // 速度1/4倍
+        const INFLUENCE_RATE = 0.15; // 敗者が勝者に染まる割合 (15%)
 
         class Creature {
             constructor(x, y, r, s, p) {
@@ -145,16 +191,22 @@
 
                 this.genes = { rock: r, scissors: s, paper: p };
 
-                // --- 新機能: サバイバルパラメータ ---
-                this.hp = 10; // 初期体力 10
-                this.lastDecayTime = Date.now(); // 体力減少タイマー用
+                this.hp = 10;
+                this.lastDecayTime = Date.now();
+                
+                // --- 新機能: 誕生時刻を記録（衝突無敵時間用） ---
+                this.birthTime = Date.now();
+            }
+
+            // 誕生から1.5秒（1500ミリ秒）の間は無敵かどうか
+            isInvincible() {
+                return (Date.now() - this.birthTime) < 1500;
             }
 
             update() {
                 this.x += this.vx;
                 this.y += this.vy;
 
-                // 画面端のバウンド
                 if (this.x - this.radius < 0) {
                     this.x = this.radius;
                     this.vx *= -1;
@@ -172,15 +224,24 @@
                     this.vy *= -1;
                 }
 
-                // --- 新機能: 10秒ごとに体力を1減らす ---
+                // --- リアルタイム変化対応: UIからHP減少間隔を取得 ---
                 const now = Date.now();
-                if (now - this.lastDecayTime >= 10000) {
+                const decayIntervalMs = parseFloat(decayIntervalSlider.value) * 1000;
+                if (now - this.lastDecayTime >= decayIntervalMs) {
                     this.hp -= 1;
                     this.lastDecayTime = now;
                 }
             }
 
             draw() {
+                ctx.save(); // 描画設定の一時保存
+
+                // --- 新機能: 無敵状態（生まれたて）なら半透明にする ---
+                const invincible = this.isInvincible();
+                if (invincible) {
+                    ctx.globalAlpha = 0.4; // 透明度40%
+                }
+
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 
@@ -190,17 +251,20 @@
                 
                 ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
                 ctx.fill();
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1;
+                
+                // 無敵中は枠線を少し目立つ黄色っぽく、通常時は白にする
+                ctx.strokeStyle = invincible ? '#f1c40f' : '#fff';
+                ctx.lineWidth = invincible ? 1.5 : 1;
                 ctx.stroke();
                 ctx.closePath();
 
-                // --- 新機能: 体力の数値を頭上に表示 ---
-                ctx.fillStyle = '#ccc';
+                // 体力表示
+                ctx.fillStyle = invincible ? '#f1c40f' : '#ccc';
                 ctx.font = '10px sans-serif';
                 ctx.textAlign = 'center';
-                // 四捨五入して表示
                 ctx.fillText(Math.round(this.hp), this.x, this.y - this.radius - 4);
+
+                ctx.restore(); // 描画設定を元に戻す（他の描画に半透明が影響しないように）
             }
 
             decideHand() {
@@ -214,6 +278,7 @@
                 }
             }
 
+            // --- リアルタイム変化対応: 突然変異処理 ---
             mutate() {
                 const keys = ['rock', 'scissors', 'paper'];
                 const loseAttr = keys[Math.floor(Math.random() * keys.length)];
@@ -222,26 +287,36 @@
                     gainAttr = keys[Math.floor(Math.random() * keys.length)];
                 } while (gainAttr === loseAttr);
 
-                const actualN = Math.min(MUTATION_AMOUNT, this.genes[loseAttr]);
+                // UIから突然変異の幅を取得 (例: 10% = 0.10)
+                const mutationAmount = parseFloat(mutAmtSlider.value) / 100;
+
+                const actualN = Math.min(mutationAmount, this.genes[loseAttr]);
                 this.genes[loseAttr] -= actualN;
                 this.genes[gainAttr] += actualN;
             }
         }
 
-        let creatures = []; // コントロールしやすいように let に変更
+        let creatures = [];
 
-        function updateSliderLabels() {
+        // ラベルのリアルタイム更新
+        function updateLabels() {
             rockVal.textContent = rockSlider.value;
             scissorsVal.textContent = scissorsSlider.value;
             paperVal.textContent = paperSlider.value;
+
+            decayVal.textContent = decayIntervalSlider.value;
+            mutRateVal.textContent = mutRateSlider.value;
+            mutAmtVal.textContent = mutAmtSlider.value;
         }
 
-        [rockSlider, scissorsSlider, paperSlider].forEach(slider => {
-            slider.addEventListener('input', updateSliderLabels);
+        // すべてのスライダーにイベント登録
+        [rockSlider, scissorsSlider, paperSlider, decayIntervalSlider, mutRateSlider, mutAmtSlider].forEach(slider => {
+            slider.addEventListener('input', updateLabels);
         });
 
-        updateSliderLabels();
+        updateLabels();
 
+        // 画面クリックでスポーン
         canvas.addEventListener('mousedown', (e) => {
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -283,10 +358,18 @@
         }
 
         function handleCollisions() {
+            // UIから現在の突然変異確率を取得
+            const mutationRate = parseFloat(mutRateSlider.value) / 100;
+
             for (let i = 0; i < creatures.length; i++) {
                 for (let j = i + 1; j < creatures.length; j++) {
                     const c1 = creatures[i];
                     const c2 = creatures[j];
+
+                    // --- 新機能: どちらかが無敵(生まれたて)なら衝突計算を完全にスキップ ---
+                    if (c1.isInvincible() || c2.isInvincible()) {
+                        continue;
+                    }
 
                     const dx = c2.x - c1.x;
                     const dy = c2.y - c1.y;
@@ -323,7 +406,6 @@
                         const hand2 = c2.decideHand();
                         const result = playJanken(hand1, hand2);
 
-                        // --- 新機能: 勝敗による体力（HP）増減 ---
                         if (result === 1) {
                             absorb(c1, c2);
                             c1.hp += 1;
@@ -334,8 +416,9 @@
                             c1.hp -= 1;
                         }
 
-                        if (Math.random() < MUTATION_RATE) c1.mutate();
-                        if (Math.random() < MUTATION_RATE) c2.mutate();
+                        // スライダーの突然変異率を適用
+                        if (Math.random() < mutationRate) c1.mutate();
+                        if (Math.random() < mutationRate) c2.mutate();
                     }
                 }
             }
@@ -362,37 +445,33 @@
                 c.update();
                 c.draw();
 
-                // --- 新機能: 分裂（クローン）処理 ---
+                // 分裂（クローン）処理
                 if (c.hp >= 15) {
-                    c.hp -= 10; // 体力を10消費
+                    c.hp -= 10;
 
-                    // クローンをちょっとだけずらした位置に生成
+                    // 重ならないようにちょっとだけずらした位置を計算
                     const angle = Math.random() * Math.PI * 2;
-                    const offset = c.radius * 2.5; // 重なりすぎない距離
+                    const offset = c.radius * 1.5; // 近すぎず遠すぎず
                     let cloneX = c.x + Math.cos(angle) * offset;
                     let cloneY = c.y + Math.sin(angle) * offset;
 
-                    // 画面外にはみ出さないようにガード
                     cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                     cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                    // クローン生成（遺伝子を引き継ぎ、HP10で誕生）
+                    // クローン生成（ここで新個体に誕生時刻が記録され、1.5秒間衝突が無効化される）
                     const clone = new Creature(cloneX, cloneY, c.genes.rock, c.genes.scissors, c.genes.paper);
                     nextCreatures.push(clone);
                 }
 
-                // --- 新機能: 生存している個体（HP 0 超過）のみ生き残る ---
                 if (c.hp > 0) {
                     nextCreatures.push(c);
                 }
             }
 
-            // 生き物リストを更新
             creatures = nextCreatures;
 
             handleCollisions();
 
-            // 個体数表示の更新
             countBadge.textContent = creatures.length;
 
             requestAnimationFrame(loop);
