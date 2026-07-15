@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (密度バランス調整版)</title>
+    <title>じゃんけん生態系シミュレーター (ファミリー追跡版)</title>
     <style>
         body {
             margin: 0;
@@ -25,26 +25,110 @@
             width: 95%;
             max-width: 1100px;
         }
+        
+        /* 左右レイアウト用ラッパー */
+        #main-area {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            justify-content: center;
+            align-items: stretch;
+        }
+
         canvas {
             border: 2px solid #555;
             background-color: #111;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             cursor: crosshair;
         }
+
+        /* 右側：ステータスパネル */
+        #statusPanel {
+            width: 260px;
+            background-color: #2c2c2c;
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 15px;
+            box-sizing: border-box;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        #statusPanel h3 {
+            margin: 0 0 5px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #555;
+            color: #f1c40f;
+            font-size: 15px;
+            text-align: center;
+        }
+        .status-placeholder {
+            color: #888;
+            text-align: center;
+            margin-top: auto;
+            margin-bottom: auto;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            border-bottom: 1px dashed #444;
+            padding-bottom: 4px;
+        }
+        .status-item span:last-child {
+            font-weight: bold;
+        }
+
+        /* 遺伝子バーのビジュアル */
+        .gene-bar-container {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 5px;
+        }
+        .gene-label {
+            font-size: 11px;
+            color: #aaa;
+        }
+        .gene-bar {
+            height: 14px;
+            border-radius: 3px;
+            position: relative;
+            background-color: #111;
+            overflow: hidden;
+        }
+        .gene-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.2s;
+        }
+        .gene-val {
+            position: absolute;
+            right: 5px;
+            top: 0;
+            font-size: 10px;
+            line-height: 14px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 1px 1px 2px #000;
+        }
+
         #controls {
             background-color: #333;
-            padding: 15px 20px;
+            padding: 12px 20px;
             border-radius: 8px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
             align-items: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
             width: 100%;
             box-sizing: border-box;
         }
         
-        /* 3列レイアウト */
         .control-grid {
             display: flex;
             gap: 20px;
@@ -54,7 +138,7 @@
         .control-column {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
             border-right: 1px solid #555;
             padding-right: 20px;
         }
@@ -97,23 +181,16 @@
             text-align: center;
             box-sizing: border-box;
         }
-        .input-row input[type="number"]:focus {
-            border-color: #3498db;
-            outline: none;
-        }
 
-        /* 下部コントロールエリア */
         .control-bottom {
             display: flex;
             width: 100%;
             justify-content: space-between;
             align-items: center;
             border-top: 1px solid #444;
-            padding-top: 12px;
-            margin-top: 5px;
+            padding-top: 10px;
         }
 
-        /* 時間コントロール */
         #speed-control {
             display: flex;
             align-items: center;
@@ -149,7 +226,6 @@
         #rockWeight { accent-color: #ff4a4a; }
         #scissorsWeight { accent-color: #4aff4a; }
         #paperWeight { accent-color: #4a4aff; }
-        
         #decayInterval { accent-color: #f39c12; }
         #mutRate { accent-color: #9b59b6; }
         #mutAmt { accent-color: #1abc9c; }
@@ -162,13 +238,12 @@
             font-size: 14px;
             border-radius: 4px;
             cursor: pointer;
-            transition: background 0.2s;
         }
         button#clearBtn:hover {
             background-color: #c0392b;
         }
         #info {
-            font-size: 13px;
+            font-size: 12px;
             text-align: center;
             line-height: 1.4;
             color: #ccc;
@@ -252,10 +327,21 @@
             </div>
         </div>
 
-        <canvas id="simCanvas" width="800" height="480"></canvas>
+        <div id="main-area">
+            <canvas id="simCanvas" width="800" height="480"></canvas>
+            
+            <div id="statusPanel">
+                <h3>🧬 個体ステータス</h3>
+                <div id="statusContent" style="display: flex; flex-direction: column; gap: 10px; height: 100%;">
+                    <div class="status-placeholder">
+                        生き物にカーソルを合わせると<br>詳細なステータスと<br>同じルーツ（家系）の親戚達が<br>ぼんやり光り輝きます。
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <div id="info">
-            【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置</strong>してください。時間速度はいつでも変更可能です。<br>
+            【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置</strong>してください。<br>
             現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
             <span style="color: #1abc9c; font-weight: bold;">※ 周囲（半径200px）に他個体が多いと密状態になりHP減少が加速します（25体で4倍速）。</span>
         </div>
@@ -274,12 +360,22 @@
         const decayIntervalSlider = document.getElementById('decayInterval');
         const mutRateSlider = document.getElementById('mutRate');
         const mutAmtSlider = document.getElementById('mutAmt');
+        
+        const statusContent = document.getElementById('statusContent');
 
         const SPEED_MULT = 0.25; 
         let timeScale = 1.0; 
 
+        // 家系管理用のカウンター
+        let familyCounter = 0;
+
+        // マウス座標＆ホバー中の個体管理
+        let mouseX = -9999;
+        let mouseY = -9999;
+        let hoveredCreature = null;
+
         class Creature {
-            constructor(x, y, r, s, p) {
+            constructor(x, y, r, s, p, familyId) {
                 this.x = x;
                 this.y = y;
                 this.radius = 8;
@@ -295,6 +391,13 @@
                 
                 this.simulatedAge = 0;       
                 this.decayAccumulator = 0; 
+
+                // 家系ID (親のIDを引き継ぐ、なければ新規発行)
+                this.familyId = familyId || `家系 #${++familyCounter}`;
+
+                // ステータス表示用に毎フレーム記録しておく変数
+                this.lastNeighborCount = 0;
+                this.lastMultiplier = 1.0;
             }
 
             isInvincible() {
@@ -325,7 +428,7 @@
                 this.simulatedAge += simDt;
 
                 // --- 密度依存型HP減少システム ---
-                const CROWD_RADIUS = 200; // 【変更】判定距離を100pxから200pxに広げる
+                const CROWD_RADIUS = 200; 
                 let neighborCount = 0;
 
                 for (let i = 0; i < allCreatures.length; i++) {
@@ -337,9 +440,11 @@
                     }
                 }
 
-                // 【変更】緩やかな傾きに調整（25体で4.0倍になるように設計）
-                // 0体：0.4倍 / 4体：約1.0倍(基準) / 25体：4.0倍
+                // 25体で4.0倍
                 const densityMultiplier = 0.4 + neighborCount * 0.144;
+
+                this.lastNeighborCount = neighborCount;
+                this.lastMultiplier = densityMultiplier;
 
                 this.decayAccumulator += simDt * densityMultiplier;
 
@@ -350,8 +455,27 @@
                 }
             }
 
-            draw() {
+            // drawの引数に「ホバー中の家系ID」を受け取る
+            draw(activeFamilyId) {
                 ctx.save();
+
+                const isRelated = activeFamilyId && (this.familyId === activeFamilyId);
+                const red = Math.floor(this.genes.rock * 255);
+                const green = Math.floor(this.genes.scissors * 255);
+                const blue = Math.floor(this.genes.paper * 255);
+
+                // 【新規】同根の生き物の場合、ぼんやり光るオーラを描画
+                if (isRelated) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius + 6, 0, Math.PI * 2);
+                    // 個体自身の遺伝子カラーを半透明にして重ねて発光を表現
+                    ctx.fillStyle = `rgba(${red}, ${green}, ${blue}, 0.4)`; 
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = `rgb(${red}, ${green}, ${blue})`;
+                    ctx.fill();
+                    ctx.closePath();
+                    ctx.shadowBlur = 0; // シャドウを戻す
+                }
 
                 const invincible = this.isInvincible();
                 if (invincible) {
@@ -360,10 +484,6 @@
 
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                
-                const red = Math.floor(this.genes.rock * 255);
-                const green = Math.floor(this.genes.scissors * 255);
-                const blue = Math.floor(this.genes.paper * 255);
                 
                 ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
                 ctx.fill();
@@ -464,10 +584,26 @@
             });
         });
 
+        // マウスの動きでカーソル位置を取得
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            mouseX = -9999;
+            mouseY = -9999;
+            hoveredCreature = null;
+        });
+
         canvas.addEventListener('mousedown', (e) => {
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
+
+            // 新規配置時にホバー個体をクリックしてたら配置しない（誤クリック防止）
+            if (hoveredCreature) return;
 
             const rW = parseFloat(rockSlider.value);
             const sW = parseFloat(scissorsSlider.value);
@@ -483,6 +619,7 @@
                 p = pW / sum;
             }
 
+            // 新規配置された個体（familyId は自動で新しくなる）
             creatures.push(new Creature(x, y, r, s, p));
             countBadge.textContent = creatures.length;
         });
@@ -490,6 +627,8 @@
         clearBtn.addEventListener('click', () => {
             creatures = [];
             countBadge.textContent = 0;
+            hoveredCreature = null;
+            familyCounter = 0;
         });
 
         function playJanken(hand1, hand2) {
@@ -561,16 +700,115 @@
             }
         }
 
+        // 右側パネルのステータス表示を更新する
+        function updateStatusPanel() {
+            if (!hoveredCreature) {
+                statusContent.innerHTML = `
+                    <div class="status-placeholder">
+                        生き物にカーソルを合わせると<br>詳細なステータスと<br>同じルーツ（家系）の親戚達が<br>ぼんやり光り輝きます。
+                    </div>
+                `;
+                return;
+            }
+
+            const c = hoveredCreature;
+            const rPercent = Math.round(c.genes.rock * 100);
+            const sPercent = Math.round(c.genes.scissors * 100);
+            const pPercent = Math.round(c.genes.paper * 100);
+
+            statusContent.innerHTML = `
+                <div class="status-item">
+                    <span>所属ルーツ:</span>
+                    <span style="color: #f1c40f;">${c.familyId}</span>
+                </div>
+                <div class="status-item">
+                    <span>現在体力 (HP):</span>
+                    <span style="color: #2ecc71;">${Math.round(c.hp)} / 15</span>
+                </div>
+                <div class="status-item">
+                    <span>周囲の他個体:</span>
+                    <span>${c.lastNeighborCount} 体</span>
+                </div>
+                <div class="status-item">
+                    <span>HP減少速度:</span>
+                    <span style="color: ${c.lastMultiplier > 2 ? '#e74c3c' : '#aaa'};">
+                        ${c.lastMultiplier.toFixed(2)} 倍速
+                    </span>
+                </div>
+                
+                <div class="gene-bar-container">
+                    <span class="gene-label">🧬 遺伝子比率 (じゃんけん比率)</span>
+                    
+                    <div class="gene-label" style="display: flex; justify-content: space-between; margin-top: 5px;">
+                        <span>✊ グー</span><span>${rPercent}%</span>
+                    </div>
+                    <div class="gene-bar">
+                        <div class="gene-fill" style="width: ${rPercent}%; background-color: #ff4a4a;"></div>
+                    </div>
+
+                    <div class="gene-label" style="display: flex; justify-content: space-between; margin-top: 5px;">
+                        <span>✌️ チョキ</span><span>${sPercent}%</span>
+                    </div>
+                    <div class="gene-bar">
+                        <div class="gene-fill" style="width: ${sPercent}%; background-color: #4aff4a;"></div>
+                    </div>
+
+                    <div class="gene-label" style="display: flex; justify-content: space-between; margin-top: 5px;">
+                        <span>🖐️ パー</span><span>${pPercent}%</span>
+                    </div>
+                    <div class="gene-bar">
+                        <div class="gene-fill" style="width: ${pPercent}%; background-color: #4a4aff;"></div>
+                    </div>
+                </div>
+            `;
+        }
+
         function loop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const nextCreatures = [];
             const simDt = 16.67 * timeScale;
 
+            // --- 1. ホバー検出 ---
+            let closestDist = 20; // 判定距離は20px（合わせやすく）
+            let tempHovered = null;
+
+            for (let i = 0; i < creatures.length; i++) {
+                const c = creatures[i];
+                const dist = Math.hypot(c.x - mouseX, c.y - mouseY);
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    tempHovered = c;
+                }
+            }
+            hoveredCreature = tempHovered;
+
+            // --- 2. ホバーされた個体の「200px可視化」を描く (一番奥に描く) ---
+            if (hoveredCreature) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(hoveredCreature.x, hoveredCreature.y, 200, 0, Math.PI * 2);
+                
+                // 判定円の背景をうっすら明るく
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+                ctx.fill();
+
+                // 判定境界線をダッシュ（破線）でスタイリッシュに
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([6, 4]); 
+                ctx.stroke();
+                ctx.closePath();
+                ctx.restore();
+            }
+
+            // --- 3. 生き物たちのアップデートと描画 ---
+            const activeFamilyId = hoveredCreature ? hoveredCreature.familyId : null;
+
             for (let i = 0; i < creatures.length; i++) {
                 const c = creatures[i];
                 c.update(simDt, creatures);
-                c.draw();
+                c.draw(activeFamilyId); // ホバーしている一族を伝える
 
                 // 分裂（クローン）処理
                 if (c.hp >= 15) {
@@ -584,7 +822,8 @@
                     cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                     cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                    const clone = new Creature(cloneX, cloneY, c.genes.rock, c.genes.scissors, c.genes.paper);
+                    // 親の「familyId」を引き継いで子を生成！
+                    const clone = new Creature(cloneX, cloneY, c.genes.rock, c.genes.scissors, c.genes.paper, c.familyId);
 
                     const mutationRate = parseFloat(mutRateSlider.value) / 100;
                     if (Math.random() < mutationRate) {
@@ -607,6 +846,9 @@
             }
 
             countBadge.textContent = creatures.length;
+
+            // サイドパネルの情報を更新
+            updateStatusPanel();
 
             requestAnimationFrame(loop);
         }
