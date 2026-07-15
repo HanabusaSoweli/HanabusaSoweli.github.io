@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (150px-50体調整版)</title>
+    <title>じゃんけん生態系シミュレーター (5親等追跡版)</title>
     <style>
         body {
             margin: 0;
@@ -334,7 +334,7 @@
                 <h3>🧬 個体ステータス</h3>
                 <div id="statusContent" style="display: flex; flex-direction: column; gap: 10px; height: 100%;">
                     <div class="status-placeholder">
-                        生き物にカーソルを合わせると<br>詳細なステータスと<br>同じルーツ（家系）の親戚達が<br>ぼんやり光り輝きます。
+                        生き物にカーソルを合わせると<br>詳細なステータスと<br>同じルーツの<strong>「5親等以内」</strong>の<br>親戚たちがぼんやり光ります。
                     </div>
                 </div>
             </div>
@@ -366,8 +366,12 @@
         const SPEED_MULT = 0.25; 
         let timeScale = 1.0; 
 
-        // 家系管理用のカウンター
+        // --- 【家系管理データ構造】 ---
         let familyCounter = 0;
+        let creatureIdCounter = 0;
+
+        // 家系関係を保持する無向グラフ (Map: creatureId -> Set of connected creatureIds)
+        const familyGraph = new Map();
 
         // マウス座標＆ホバー中の個体管理
         let mouseX = -9999;
@@ -375,7 +379,9 @@
         let hoveredCreature = null;
 
         class Creature {
-            constructor(x, y, r, s, p, familyId) {
+            constructor(x, y, r, s, p, familyId, parentId = null) {
+                this.id = ++creatureIdCounter; // 各個体に一意のID
+                
                 this.x = x;
                 this.y = y;
                 this.radius = 8;
@@ -392,8 +398,15 @@
                 this.simulatedAge = 0;       
                 this.decayAccumulator = 0; 
 
-                // 家系ID (親のIDを引き継ぐ、なければ新規発行)
+                // 初期配置された元祖の家系名
                 this.familyId = familyId || `家系 #${++familyCounter}`;
+
+                // --- 家系グラフへの登録 ---
+                familyGraph.set(this.id, new Set());
+                if (parentId && familyGraph.has(parentId)) {
+                    familyGraph.get(parentId).add(this.id);
+                    familyGraph.get(this.id).add(parentId);
+                }
 
                 // ステータス表示用に毎フレーム記録しておく変数
                 this.lastNeighborCount = 0;
@@ -427,8 +440,8 @@
 
                 this.simulatedAge += simDt;
 
-                // --- 密度依存型HP減少システム ---
-                const CROWD_RADIUS = 150; // 【変更】判定距離を200pxから150pxに調整
+                // --- 密度依存型HP減少システム (150px - 50体で4倍調整版) ---
+                const CROWD_RADIUS = 150; 
                 let neighborCount = 0;
 
                 for (let i = 0; i < allCreatures.length; i++) {
@@ -440,8 +453,7 @@
                     }
                 }
 
-                // 【変更】50体で4.0倍になるように設計
-                // 0体：0.4倍 / 約8体：約1.0倍(基準) / 50体：4.0倍
+                // 50体で4.0倍
                 const densityMultiplier = 0.4 + neighborCount * 0.072;
 
                 this.lastNeighborCount = neighborCount;
@@ -456,25 +468,24 @@
                 }
             }
 
-            // drawの引数に「ホバー中の家系ID」を受け取る
-            draw(activeFamilyId) {
+            // 引数に「5親等以内の親戚かどうか (boolean)」を受け取って描画
+            draw(isRelated) {
                 ctx.save();
 
-                const isRelated = activeFamilyId && (this.familyId === activeFamilyId);
                 const red = Math.floor(this.genes.rock * 255);
                 const green = Math.floor(this.genes.scissors * 255);
                 const blue = Math.floor(this.genes.paper * 255);
 
-                // 同根の生き物の場合、ぼんやり光るオーラを描画
+                // 【変更】5親等以内の近い親戚の場合、ぼんやり光るオーラを描画
                 if (isRelated) {
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius + 6, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(${red}, ${green}, ${blue}, 0.4)`; 
+                    ctx.fillStyle = `rgba(${red}, ${green}, ${blue}, 0.45)`; 
                     ctx.shadowBlur = 10;
                     ctx.shadowColor = `rgb(${red}, ${green}, ${blue})`;
                     ctx.fill();
                     ctx.closePath();
-                    ctx.shadowBlur = 0; // シャドウを戻す
+                    ctx.shadowBlur = 0; 
                 }
 
                 const invincible = this.isInvincible();
@@ -533,6 +544,79 @@
 
         let creatures = [];
 
+        // --- 【アルゴリズム】ホバー対象から5親等以内の個体IDを幅優先探索(BFS)で取得 ---
+        function getRelativesWithin5Degrees(startId) {
+            const relatives = new Set();
+            const queue = [{ id: startId, dist: 0 }];
+            const visited = new Set();
+            visited.add(startId);
+
+            while (queue.length > 0) {
+                const { id, dist } = queue.shift();
+                relatives.add(id);
+
+                // 最大5親等(距離5)まで探索を広げる
+                if (dist < 5) {
+                    const neighbors = familyGraph.get(id);
+                    if (neighbors) {
+                        for (const neighborId of neighbors) {
+                            if (!visited.has(neighborId)) {
+                                visited.add(neighborId);
+                                queue.push({ id: neighborId, dist: dist + 1 });
+                            }
+                        }
+                    }
+                }
+            }
+            return relatives;
+        }
+
+        // --- 【ガベージコレクション】死んだ個体の古い家系データの掃除 ---
+        // 生存中の全ての個体から5親等以内で辿れない孤立したノードをグラフから削除します。
+        function cleanUpFamilyGraph() {
+            const activeIds = new Set();
+            const visited = new Set();
+
+            for (let i = 0; i < creatures.length; i++) {
+                const startId = creatures[i].id;
+                if (visited.has(startId)) continue;
+
+                const queue = [{ id: startId, dist: 0 }];
+                visited.add(startId);
+
+                while (queue.length > 0) {
+                    const { id, dist } = queue.shift();
+                    activeIds.add(id);
+
+                    if (dist < 5) {
+                        const neighbors = familyGraph.get(id);
+                        if (neighbors) {
+                            for (const neighborId of neighbors) {
+                                if (!visited.has(neighborId)) {
+                                    visited.add(neighborId);
+                                    queue.push({ id: neighborId, dist: dist + 1 });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 探索で辿れなかった古いノードをMapから全削除
+            for (const id of familyGraph.keys()) {
+                if (!activeIds.has(id)) {
+                    familyGraph.delete(id);
+                } else {
+                    const neighbors = familyGraph.get(id);
+                    for (const neighborId of neighbors) {
+                        if (!activeIds.has(neighborId)) {
+                            neighbors.delete(neighborId);
+                        }
+                    }
+                }
+            }
+        }
+
         // 双方向同期システム
         const inputPairs = [
             { slider: document.getElementById('rockWeight'), num: document.getElementById('rockNum') },
@@ -584,7 +668,6 @@
             });
         });
 
-        // マウスの動きでカーソル位置を取得
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
             mouseX = e.clientX - rect.left;
@@ -602,7 +685,6 @@
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            // 新規配置時にホバー個体をクリックしてたら配置しない（誤クリック防止）
             if (hoveredCreature) return;
 
             const rW = parseFloat(rockSlider.value);
@@ -628,6 +710,8 @@
             countBadge.textContent = 0;
             hoveredCreature = null;
             familyCounter = 0;
+            creatureIdCounter = 0;
+            familyGraph.clear();
         });
 
         function playJanken(hand1, hand2) {
@@ -699,12 +783,11 @@
             }
         }
 
-        // 右側パネルのステータス表示を更新する
         function updateStatusPanel() {
             if (!hoveredCreature) {
                 statusContent.innerHTML = `
                     <div class="status-placeholder">
-                        生き物にカーソルを合わせると<br>詳細なステータスと<br>同じルーツ（家系）の親戚達が<br>ぼんやり光り輝きます。
+                        生き物にカーソルを合わせると<br>詳細なステータスと<br>同じルーツの<strong>「5親等以内」</strong>の<br>親戚たちがぼんやり光ります。
                     </div>
                 `;
                 return;
@@ -762,11 +845,19 @@
             `;
         }
 
+        let frameCount = 0;
+
         function loop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const nextCreatures = [];
             const simDt = 16.67 * timeScale;
+            frameCount++;
+
+            // --- 3秒(180フレーム)に一度、死んだ個体の家系グラフデータを掃除 ---
+            if (frameCount % 180 === 0) {
+                cleanUpFamilyGraph();
+            }
 
             // --- 1. ホバー検出 ---
             let closestDist = 20; 
@@ -786,7 +877,7 @@
             if (hoveredCreature) {
                 ctx.save();
                 ctx.beginPath();
-                ctx.arc(hoveredCreature.x, hoveredCreature.y, 150, 0, Math.PI * 2); // 【変更】半径を150pxに可視化
+                ctx.arc(hoveredCreature.x, hoveredCreature.y, 150, 0, Math.PI * 2); 
                 
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
                 ctx.fill();
@@ -799,13 +890,19 @@
                 ctx.restore();
             }
 
-            // --- 3. 生き物たちのアップデートと描画 ---
-            const activeFamilyId = hoveredCreature ? hoveredCreature.familyId : null;
+            // --- 3. 5親等以内のIDリストを事前計算 ---
+            let relativeIds = new Set();
+            if (hoveredCreature) {
+                relativeIds = getRelativesWithin5Degrees(hoveredCreature.id);
+            }
 
+            // --- 4. 生き物たちのアップデートと描画 ---
             for (let i = 0; i < creatures.length; i++) {
                 const c = creatures[i];
                 c.update(simDt, creatures);
-                c.draw(activeFamilyId); 
+                
+                // 5親等以内に入っている個体だけ光るフラグを渡して描画
+                c.draw(relativeIds.has(c.id)); 
 
                 // 分裂（クローン）処理
                 if (c.hp >= 15) {
@@ -819,7 +916,8 @@
                     cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                     cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                    const clone = new Creature(cloneX, cloneY, c.genes.rock, c.genes.scissors, c.genes.paper, c.familyId);
+                    // 親のID（c.id）を渡すことで、家系グラフにエッジを追加します
+                    const clone = new Creature(cloneX, cloneY, c.genes.rock, c.genes.scissors, c.genes.paper, c.familyId, c.id);
 
                     const mutationRate = parseFloat(mutRateSlider.value) / 100;
                     if (Math.random() < mutationRate) {
