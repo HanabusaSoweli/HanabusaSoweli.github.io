@@ -170,7 +170,7 @@
             gap: 8px;
             border-right: 1px solid #555;
             padding-right: 20px;
-            position: relative; /* 子要素の絶対配置基準用 */
+            position: relative;
         }
         .control-column:last-of-type {
             border-right: none;
@@ -253,10 +253,6 @@
             font-weight: bold;
         }
 
-        #decayInterval { accent-color: #f39c12; }
-        #mutRate { accent-color: #9b59b6; }
-        #mutAmt { accent-color: #1abc9c; }
-
         button#clearBtn {
             background-color: #e74c3c;
             color: white;
@@ -320,26 +316,49 @@
                 </div>
 
                 <div class="control-column" style="width: 280px;">
-                    <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">⚙️ 環境・進化設定</h4>
-                    <div class="slider-group" style="width: 100%;">
-                        <label>⏳ 基準HP減少間隔 (秒)</label>
-                        <div class="input-row">
-                            <input type="range" id="decayInterval" min="1" max="300" value="120">
-                            <input type="number" id="decayNum" min="1" max="300" value="120">
+                    <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">⚙️ 環境・シミュレーション設定</h4>
+                    <div style="display: flex; flex-direction: column; gap: 6px; height: 140px; overflow-y: auto; padding-right: 5px;">
+                        <div class="slider-group" style="width: 100%;">
+                            <label>⏳ 基準HP減少間隔 (秒)</label>
+                            <div class="input-row">
+                                <input type="range" id="decayInterval" min="1" max="300" value="120">
+                                <input type="number" id="decayNum" min="1" max="300" value="120">
+                            </div>
                         </div>
-                    </div>
-                    <div class="slider-group" style="width: 100%; margin-top: 4px;">
-                        <label>⚡ 分裂時変異率 (%)</label>
-                        <div class="input-row">
-                            <input type="range" id="mutRate" min="0" max="100" value="5">
-                            <input type="number" id="mutRateNum" min="0" max="100" value="5">
+                        <div class="slider-group" style="width: 100%;">
+                            <label>⚡ 分裂時変異率 (%)</label>
+                            <div class="input-row">
+                                <input type="range" id="mutRate" min="0" max="100" value="5">
+                                <input type="number" id="mutRateNum" min="0" max="100" value="5">
+                            </div>
                         </div>
-                    </div>
-                    <div class="slider-group" style="width: 100%; margin-top: 4px;">
-                        <label>🔮 変異変化幅 (%)</label>
-                        <div class="input-row">
-                            <input type="range" id="mutAmt" min="1" max="50" value="10">
-                            <input type="number" id="mutAmtNum" min="1" max="50" value="10">
+                        <div class="slider-group" style="width: 100%;">
+                            <label>🔮 変異変化幅 (%)</label>
+                            <div class="input-row">
+                                <input type="range" id="mutAmt" min="1" max="50" value="10">
+                                <input type="number" id="mutAmtNum" min="1" max="50" value="10">
+                            </div>
+                        </div>
+                        <div class="slider-group" style="width: 100%;">
+                            <label>📏 密度の判定半径 (px)</label>
+                            <div class="input-row">
+                                <input type="range" id="crowdRadius" min="10" max="300" value="50">
+                                <input type="number" id="crowdRadiusNum" min="10" max="300" value="50">
+                            </div>
+                        </div>
+                        <div class="slider-group" style="width: 100%;">
+                            <label>👥 混雑基準の個体数 (体)</label>
+                            <div class="input-row">
+                                <input type="range" id="crowdLimit" min="1" max="100" value="20">
+                                <input type="number" id="crowdLimitNum" min="1" max="100" value="20">
+                            </div>
+                        </div>
+                        <div class="slider-group" style="width: 100%;">
+                            <label>🔥 混雑時の減少倍率 (倍)</label>
+                            <div class="input-row">
+                                <input type="range" id="crowdMult" min="1" max="50" value="10">
+                                <input type="number" id="crowdMultNum" min="1" max="50" value="10">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -388,7 +407,7 @@
         <div id="info">
             【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置</strong>してください。<br>
             現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
-            <span style="color: #1abc9c; font-weight: bold;">※ 周囲（半径150px）に他個体が多いと密状態になりHP減少が加速します（25体で4倍速）。</span>
+            <span style="color: #1abc9c; font-weight: bold;">※ 周囲に他個体が多いと密状態になりHP減少が加速します（環境設定で自由にルール変更可能）。</span>
         </div>
     </div>
 
@@ -419,6 +438,11 @@
 
         const SPEED_MULT = 0.25; 
         let timeScale = 1.0; 
+
+        // 密度設定のリアルタイム参照用変数（毎ループの最初に更新）
+        let currentCrowdRadius = 50;
+        let currentCrowdLimit = 20;
+        let currentCrowdMult = 10;
 
         // --- 動的に増減可能なじゃんけんの手のマスターデータ ---
         let hands = [
@@ -467,7 +491,7 @@
                 this.vx = Math.cos(angle) * speed;
                 this.vy = Math.sin(angle) * speed;
 
-                // 遺伝子配列のディープコピー（登録されていない手は0で初期化）
+                // 遺伝子配列のディープコピー
                 this.genes = {};
                 hands.forEach(h => {
                     this.genes[h.id] = genes[h.id] !== undefined ? genes[h.id] : 0;
@@ -526,21 +550,22 @@
 
                 this.simulatedAge += simDt;
 
-                // 密度依存型HP減少システム (150px内に25体で4.0倍速)
-                const CROWD_RADIUS = 150; 
+                // 密度依存型HP減少システム (リアルタイム設定値を使用)
                 let neighborCount = 0;
 
                 for (let i = 0; i < allCreatures.length; i++) {
                     const other = allCreatures[i];
                     if (other === this) continue;
                     const dist = Math.hypot(other.x - this.x, other.y - this.y);
-                    if (dist < CROWD_RADIUS) {
+                    if (dist < currentCrowdRadius) {
                         neighborCount++;
                     }
                 }
 
-                // 25体で 0.4 + 25 * 0.144 = 4.0倍速
-                const densityMultiplier = 0.4 + neighborCount * 0.144;
+                // 指定数(currentCrowdLimit)で指定倍率(currentCrowdMult)に達するように傾きを調整
+                // 孤独時（0体）の基本減少速度は 0.4 倍
+                const slope = (currentCrowdMult - 0.4) / currentCrowdLimit;
+                const densityMultiplier = Math.max(0.1, 0.4 + neighborCount * slope);
 
                 this.lastNeighborCount = neighborCount;
                 this.lastMultiplier = densityMultiplier;
@@ -614,7 +639,6 @@
                 ctx.restore(); 
             }
 
-            // 手の決定
             decideHand() {
                 const rand = Math.random();
                 let cumulative = 0;
@@ -662,7 +686,6 @@
             return '5degrees';
         }
 
-        // BFSアルゴリズムによる5親等以内の取得
         function getRelativesWithin5Degrees(startId) {
             const relatives = new Set();
             const queue = [{ id: startId, dist: 0 }];
@@ -731,7 +754,6 @@
             }
         }
 
-        // 手のマスターリストのHTML生成
         function renderHandList() {
             handListContainer.innerHTML = '';
             hands.forEach(h => {
@@ -744,7 +766,6 @@
                 div.style.borderRadius = '4px';
                 div.style.fontSize = '11px';
 
-                // 相性ルールの文字列表現
                 const winTargets = h.beats.map(id => {
                     const found = hands.find(item => item.id === id);
                     return found ? found.name.split(' ')[0] : ''; 
@@ -862,7 +883,6 @@
             return weights;
         }
 
-        // 新しい手と既存の手の「勝ち・負け・あいこ」ラジオ設定UIを生成
         function populateRelationshipInputs() {
             beatsCheckboxes.innerHTML = '';
             
@@ -902,7 +922,6 @@
             });
         }
 
-        // 手の追加登録確定処理
         submitAddHandBtn.addEventListener('click', () => {
             const name = newHandName.value.trim();
             const color = newHandColor.value;
@@ -915,22 +934,18 @@
             const newId = 'hand_' + Date.now();
             const beats = [];
 
-            // 各既存の手との関係性を読み取って、相互関係を定義
             hands.forEach(h => {
                 const radio = document.querySelector(`input[name="rel_${h.id}"]:checked`);
                 if (radio) {
                     const relation = radio.value;
                     if (relation === 'win') {
-                        // 新手が既存の手に勝つ（新手の勝利リストに追加）
                         beats.push(h.id);
                     } else if (relation === 'lose') {
-                        // 既存の手が新手に勝つ（既存側の勝利リストに新規IDを追加）
                         h.beats.push(newId);
                     }
                 }
             });
 
-            // 新手をリストに登録
             hands.push({
                 id: newId,
                 name: name,
@@ -938,12 +953,10 @@
                 beats: beats
             });
 
-            // 現在いる全ての個体の遺伝子マップに、新しく追加された手(割合0%)を追加
             creatures.forEach(c => {
                 c.genes[newId] = 0;
             });
 
-            // フォームのリセットと非表示
             newHandName.value = '';
             addHandForm.style.display = 'none';
 
@@ -951,7 +964,6 @@
             renderDynamicSliders();
         });
 
-        // フォーム表示非表示制御
         showAddHandFormBtn.addEventListener('click', () => {
             populateRelationshipInputs();
             addHandForm.style.display = 'flex';
@@ -961,11 +973,14 @@
             addHandForm.style.display = 'none';
         });
 
-        // 固定環境設定用の同期
+        // 固定環境設定＆新規密度パラメータ設定の数値・スライダー同期
         const inputPairs = [
             { slider: document.getElementById('decayInterval'), num: document.getElementById('decayNum') },
             { slider: document.getElementById('mutRate'), num: document.getElementById('mutRateNum') },
-            { slider: document.getElementById('mutAmt'), num: document.getElementById('mutAmtNum') }
+            { slider: document.getElementById('mutAmt'), num: document.getElementById('mutAmtNum') },
+            { slider: document.getElementById('crowdRadius'), num: document.getElementById('crowdRadiusNum') },
+            { slider: document.getElementById('crowdLimit'), num: document.getElementById('crowdLimitNum') },
+            { slider: document.getElementById('crowdMult'), num: document.getElementById('crowdMultNum') }
         ];
 
         inputPairs.forEach(pair => {
@@ -1037,7 +1052,6 @@
             familyGraph.clear();
         });
 
-        // じゃんけん判定（お互いのbeatsリストを照合）
         function playJanken(handId1, handId2) {
             if (handId1 === handId2) return 0;
             
@@ -1048,7 +1062,7 @@
             if (h1.beats.includes(handId2)) return 1;
             if (h2.beats.includes(handId1)) return -1;
             
-            return 0; // すくみの関係にない、あるいは「引き分け」に設定されている場合はあいこ
+            return 0; 
         }
 
         function handleCollisions() {
@@ -1110,7 +1124,7 @@
             if (!hoveredCreature) {
                 statusContent.innerHTML = `
                     <div class="status-placeholder">
-                        生き物にカーソルを合わせると<br>詳細なステータスと<br>指定した範囲 of 親戚達が<br>ぼんやり光り輝きます。
+                        生き物にカーソルを合わせると<br>詳細なステータスと<br>指定した範囲の親戚達が<br>ぼんやり光り輝きます。
                     </div>
                 `;
                 return;
@@ -1141,7 +1155,7 @@
                     <span style="color: #2ecc71;">${Math.round(c.hp)} / 15</span>
                 </div>
                 <div class="status-item">
-                    <span>周囲の他個体:</span>
+                    <span>周囲の他個体 (${Math.round(currentCrowdRadius)}px以内):</span>
                     <span>${c.lastNeighborCount} 体</span>
                 </div>
                 <div class="status-item">
@@ -1162,6 +1176,11 @@
 
         function loop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 密度用UIパラメータの取得（毎フレーム取得し、全処理で共有）
+            currentCrowdRadius = parseFloat(document.getElementById('crowdRadius').value) || 50;
+            currentCrowdLimit = parseFloat(document.getElementById('crowdLimit').value) || 20;
+            currentCrowdMult = parseFloat(document.getElementById('crowdMult').value) || 10;
 
             const nextCreatures = [];
             const simDt = 16.67 * timeScale;
@@ -1184,10 +1203,11 @@
             }
             hoveredCreature = tempHovered;
 
+            // ホバー時の「判定半径サークル」を動的サイズに連動して描画
             if (hoveredCreature) {
                 ctx.save();
                 ctx.beginPath();
-                ctx.arc(hoveredCreature.x, hoveredCreature.y, 150, 0, Math.PI * 2); 
+                ctx.arc(hoveredCreature.x, hoveredCreature.y, currentCrowdRadius, 0, Math.PI * 2); 
                 
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
                 ctx.fill();
