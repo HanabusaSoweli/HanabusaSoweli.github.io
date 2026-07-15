@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (時間変速対応版)</title>
+    <title>じゃんけん生態系シミュレーター (増殖強化版)</title>
     <style>
         body {
             margin: 0;
@@ -36,7 +36,7 @@
             padding: 15px 20px;
             border-radius: 8px;
             display: flex;
-            flex-direction: column; /* 縦並びに整理 */
+            flex-direction: column;
             gap: 15px;
             align-items: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
@@ -276,7 +276,7 @@
         const mutAmtSlider = document.getElementById('mutAmt');
 
         const SPEED_MULT = 0.25; 
-        let timeScale = 1.0; // 時間速度の倍率
+        let timeScale = 1.0; 
 
         class Creature {
             constructor(x, y, r, s, p) {
@@ -293,17 +293,15 @@
                 this.genes = { rock: r, scissors: s, paper: p };
                 this.hp = 10;
                 
-                // --- 仮想時間システム ---
-                this.simulatedAge = 0;       // 生まれてからのシミュレーション上の経過時間(ms)
-                this.simulatedLastDecay = 0; // 最後にHPが減少したシミュレーション上の時間(ms)
+                this.simulatedAge = 0;       
+                this.simulatedLastDecay = 0; 
             }
 
             isInvincible() {
-                return this.simulatedAge < 1500; // 生誕1.5秒(1500ms)は無敵
+                return this.simulatedAge < 1500; 
             }
 
             update(simDt) {
-                // 位置の更新（速度倍率を適用）
                 this.x += this.vx * timeScale;
                 this.y += this.vy * timeScale;
 
@@ -324,10 +322,8 @@
                     this.vy *= -1;
                 }
 
-                // 時間経過を仮想時計に累積
                 this.simulatedAge += simDt;
 
-                // HP減少判定（シミュレーション時間に連動）
                 const decayIntervalMs = parseFloat(decayIntervalSlider.value) * 1000;
                 if (this.simulatedAge - this.simulatedLastDecay >= decayIntervalMs) {
                     this.hp -= 1;
@@ -440,7 +436,6 @@
             });
         });
 
-        // 速度ボタンのイベントハンドラー
         const speedBtns = document.querySelectorAll('.speed-btn');
         speedBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -551,7 +546,6 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const nextCreatures = [];
-            // 60FPS基準(約16.67ms)とした場合の、現在の速度倍率に基づく進行時間
             const simDt = 16.67 * timeScale;
 
             for (let i = 0; i < creatures.length; i++) {
@@ -561,7 +555,7 @@
 
                 // 分裂（クローン）処理
                 if (c.hp >= 15) {
-                    c.hp -= 10;
+                    c.hp -= 5; // 【変更箇所】消費HPを10から5へ引き下げ
 
                     const angle = Math.random() * Math.PI * 2;
                     const offset = c.radius * 1.5; 
@@ -571,6 +565,7 @@
                     cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                     cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
+                    // cloneの初期HPはコンストラクタ内で10に設定されます
                     const clone = new Creature(cloneX, cloneY, c.genes.rock, c.genes.scissors, c.genes.paper);
 
                     const mutationRate = parseFloat(mutRateSlider.value) / 100;
@@ -589,7 +584,6 @@
 
             creatures = nextCreatures;
 
-            // 時間が動いている時のみ当たり判定を処理
             if (timeScale > 0) {
                 handleCollisions();
             }
