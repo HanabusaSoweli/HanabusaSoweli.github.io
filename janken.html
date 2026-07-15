@@ -388,7 +388,7 @@
         <div id="info">
             【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置</strong>してください。<br>
             現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
-            <span style="color: #1abc9c; font-weight: bold;">※ 周囲（半径150px）に他個体が多いと密状態になりHP減少が加速します（50体で4倍速）。</span>
+            <span style="color: #1abc9c; font-weight: bold;">※ 周囲（半径150px）に他個体が多いと密状態になりHP減少が加速します（25体で4倍速）。</span>
         </div>
     </div>
 
@@ -526,7 +526,7 @@
 
                 this.simulatedAge += simDt;
 
-                // 密度依存型HP減少システム
+                // 密度依存型HP減少システム (150px内に25体で4.0倍速)
                 const CROWD_RADIUS = 150; 
                 let neighborCount = 0;
 
@@ -539,7 +539,8 @@
                     }
                 }
 
-                const densityMultiplier = 0.4 + neighborCount * 0.072;
+                // 25体で 0.4 + 25 * 0.144 = 4.0倍速
+                const densityMultiplier = 0.4 + neighborCount * 0.144;
 
                 this.lastNeighborCount = neighborCount;
                 this.lastMultiplier = densityMultiplier;
@@ -861,7 +862,7 @@
             return weights;
         }
 
-        // --- 【新機能】新しい手と既存の手の「勝ち・負け・あいこ」ラジオ設定UIを生成 ---
+        // 新しい手と既存の手の「勝ち・負け・あいこ」ラジオ設定UIを生成
         function populateRelationshipInputs() {
             beatsCheckboxes.innerHTML = '';
             
@@ -926,7 +927,6 @@
                         // 既存の手が新手に勝つ（既存側の勝利リストに新規IDを追加）
                         h.beats.push(newId);
                     }
-                    // 'draw' (引き分け) の場合は、お互いの勝利リストに入れないだけで実現可能
                 }
             });
 
@@ -1110,7 +1110,7 @@
             if (!hoveredCreature) {
                 statusContent.innerHTML = `
                     <div class="status-placeholder">
-                        生き物にカーソルを合わせると<br>詳細なステータスと<br>指定した範囲の親戚達が<br>ぼんやり光り輝きます。
+                        生き物にカーソルを合わせると<br>詳細なステータスと<br>指定した範囲 of 親戚達が<br>ぼんやり光り輝きます。
                     </div>
                 `;
                 return;
