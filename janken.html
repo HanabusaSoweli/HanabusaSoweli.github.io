@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (5親等追跡版)</title>
+    <title>じゃんけん生態系シミュレーター (血縁ハイライト切り替え版)</title>
     <style>
         body {
             margin: 0;
@@ -63,6 +63,42 @@
             font-size: 15px;
             text-align: center;
         }
+        
+        /* ハイライト切り替え用のUI */
+        #highlightConfig {
+            background-color: #1e1e1e;
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 11px;
+            border: 1px solid #444;
+        }
+        .highlight-title {
+            color: #f1c40f;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .radio-group {
+            display: flex;
+            gap: 12px;
+        }
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            user-select: none;
+            color: #ccc;
+        }
+        .radio-label input {
+            margin: 0;
+            cursor: pointer;
+        }
+
         .status-placeholder {
             color: #888;
             text-align: center;
@@ -104,16 +140,6 @@
             height: 100%;
             width: 0%;
             transition: width 0.2s;
-        }
-        .gene-val {
-            position: absolute;
-            right: 5px;
-            top: 0;
-            font-size: 10px;
-            line-height: 14px;
-            font-weight: bold;
-            color: #fff;
-            text-shadow: 1px 1px 2px #000;
         }
 
         #controls {
@@ -332,9 +358,22 @@
             
             <div id="statusPanel">
                 <h3>🧬 個体ステータス</h3>
+                
+                <div id="highlightConfig">
+                    <div class="highlight-title">💡 ハイライト対象</div>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="highlightMode" value="5degrees" checked> 5親等以内
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="highlightMode" value="all"> 一族全員
+                        </label>
+                    </div>
+                </div>
+
                 <div id="statusContent" style="display: flex; flex-direction: column; gap: 10px; height: 100%;">
                     <div class="status-placeholder">
-                        生き物にカーソルを合わせると<br>詳細なステータスと<br>同じルーツの<strong>「5親等以内」</strong>の<br>親戚たちがぼんやり光ります。
+                        生き物にカーソルを合わせると<br>詳細なステータスと<br>指定した範囲の親戚達が<br>ぼんやり光り輝きます。
                     </div>
                 </div>
             </div>
@@ -363,10 +402,13 @@
         
         const statusContent = document.getElementById('statusContent');
 
+        // ハイライトモード取得用ラジオボタン
+        const highlightRadios = document.getElementsByName('highlightMode');
+
         const SPEED_MULT = 0.25; 
         let timeScale = 1.0; 
 
-        // --- 【家系管理データ構造】 ---
+        // --- 家系・ID管理システム ---
         let familyCounter = 0;
         let creatureIdCounter = 0;
 
@@ -380,7 +422,7 @@
 
         class Creature {
             constructor(x, y, r, s, p, familyId, parentId = null) {
-                this.id = ++creatureIdCounter; // 各個体に一意のID
+                this.id = ++creatureIdCounter; // ユニークID
                 
                 this.x = x;
                 this.y = y;
@@ -398,17 +440,17 @@
                 this.simulatedAge = 0;       
                 this.decayAccumulator = 0; 
 
-                // 初期配置された元祖の家系名
+                // 初代が設定された場合はその家系名、なければ新規
                 this.familyId = familyId || `家系 #${++familyCounter}`;
 
-                // --- 家系グラフへの登録 ---
+                // 親子関係をグラフに登録
                 familyGraph.set(this.id, new Set());
                 if (parentId && familyGraph.has(parentId)) {
                     familyGraph.get(parentId).add(this.id);
                     familyGraph.get(this.id).add(parentId);
                 }
 
-                // ステータス表示用に毎フレーム記録しておく変数
+                // 毎フレーム表示用
                 this.lastNeighborCount = 0;
                 this.lastMultiplier = 1.0;
             }
@@ -440,7 +482,7 @@
 
                 this.simulatedAge += simDt;
 
-                // --- 密度依存型HP減少システム (150px - 50体で4倍調整版) ---
+                // --- 密度依存型HP減少システム (150px-50体で4倍調整) ---
                 const CROWD_RADIUS = 150; 
                 let neighborCount = 0;
 
@@ -453,7 +495,6 @@
                     }
                 }
 
-                // 50体で4.0倍
                 const densityMultiplier = 0.4 + neighborCount * 0.072;
 
                 this.lastNeighborCount = neighborCount;
@@ -468,16 +509,16 @@
                 }
             }
 
-            // 引数に「5親等以内の親戚かどうか (boolean)」を受け取って描画
-            draw(isRelated) {
+            // 引数に「光らせるべきか」のフラグを受け取る
+            draw(isHighlighted) {
                 ctx.save();
 
                 const red = Math.floor(this.genes.rock * 255);
                 const green = Math.floor(this.genes.scissors * 255);
                 const blue = Math.floor(this.genes.paper * 255);
 
-                // 【変更】5親等以内の近い親戚の場合、ぼんやり光るオーラを描画
-                if (isRelated) {
+                // 対象時にオーラを纏う
+                if (isHighlighted) {
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius + 6, 0, Math.PI * 2);
                     ctx.fillStyle = `rgba(${red}, ${green}, ${blue}, 0.45)`; 
@@ -544,7 +585,15 @@
 
         let creatures = [];
 
-        // --- 【アルゴリズム】ホバー対象から5親等以内の個体IDを幅優先探索(BFS)で取得 ---
+        // --- 現在選択されているハイライトモードを取得 ---
+        function getSelectedHighlightMode() {
+            for (const r of highlightRadios) {
+                if (r.checked) return r.value;
+            }
+            return '5degrees';
+        }
+
+        // --- 【BFSアルゴリズム】ホバー対象から5親等以内の個体IDを取得 ---
         function getRelativesWithin5Degrees(startId) {
             const relatives = new Set();
             const queue = [{ id: startId, dist: 0 }];
@@ -555,7 +604,6 @@
                 const { id, dist } = queue.shift();
                 relatives.add(id);
 
-                // 最大5親等(距離5)まで探索を広げる
                 if (dist < 5) {
                     const neighbors = familyGraph.get(id);
                     if (neighbors) {
@@ -571,8 +619,7 @@
             return relatives;
         }
 
-        // --- 【ガベージコレクション】死んだ個体の古い家系データの掃除 ---
-        // 生存中の全ての個体から5親等以内で辿れない孤立したノードをグラフから削除します。
+        // --- 【GC処理】メモリ節約のための家族グラフのクリーニング ---
         function cleanUpFamilyGraph() {
             const activeIds = new Set();
             const visited = new Set();
@@ -602,7 +649,6 @@
                 }
             }
 
-            // 探索で辿れなかった古いノードをMapから全削除
             for (const id of familyGraph.keys()) {
                 if (!activeIds.has(id)) {
                     familyGraph.delete(id);
@@ -617,7 +663,7 @@
             }
         }
 
-        // 双方向同期システム
+        // 双方向入力同期
         const inputPairs = [
             { slider: document.getElementById('rockWeight'), num: document.getElementById('rockNum') },
             { slider: document.getElementById('scissorsWeight'), num: document.getElementById('scissorsNum') },
@@ -631,20 +677,15 @@
             pair.slider.addEventListener('input', () => {
                 pair.num.value = pair.slider.value;
             });
-
             pair.num.addEventListener('input', () => {
                 let val = parseFloat(pair.num.value);
                 const min = parseFloat(pair.slider.min);
                 const max = parseFloat(pair.slider.max);
-
                 if (isNaN(val)) return;
-
                 if (val < min) val = min;
                 if (val > max) val = max;
-
                 pair.slider.value = val;
             });
-
             pair.num.addEventListener('blur', () => {
                 if (pair.num.value === '' || isNaN(parseFloat(pair.num.value))) {
                     pair.num.value = pair.slider.value;
@@ -732,9 +773,7 @@
                     const c1 = creatures[i];
                     const c2 = creatures[j];
 
-                    if (c1.isInvincible() || c2.isInvincible()) {
-                        continue;
-                    }
+                    if (c1.isInvincible() || c2.isInvincible()) continue;
 
                     const dx = c2.x - c1.x;
                     const dy = c2.y - c1.y;
@@ -787,7 +826,7 @@
             if (!hoveredCreature) {
                 statusContent.innerHTML = `
                     <div class="status-placeholder">
-                        生き物にカーソルを合わせると<br>詳細なステータスと<br>同じルーツの<strong>「5親等以内」</strong>の<br>親戚たちがぼんやり光ります。
+                        生き物にカーソルを合わせると<br>詳細なステータスと<br>指定した範囲の親戚達が<br>ぼんやり光り輝きます。
                     </div>
                 `;
                 return;
@@ -799,7 +838,7 @@
             const pPercent = Math.round(c.genes.paper * 100);
 
             statusContent.innerHTML = `
-                <div class="status-item">
+                <div class="status-item" style="margin-top: 10px;">
                     <span>所属ルーツ:</span>
                     <span style="color: #f1c40f;">${c.familyId}</span>
                 </div>
@@ -854,7 +893,7 @@
             const simDt = 16.67 * timeScale;
             frameCount++;
 
-            // --- 3秒(180フレーム)に一度、死んだ個体の家系グラフデータを掃除 ---
+            // 3秒に一度のGC処理
             if (frameCount % 180 === 0) {
                 cleanUpFamilyGraph();
             }
@@ -873,7 +912,7 @@
             }
             hoveredCreature = tempHovered;
 
-            // --- 2. ホバーされた個体の「150px可視化」を描く (一番奥に描く) ---
+            // --- 2. 150pxの過密判定エリア可視化を描く ---
             if (hoveredCreature) {
                 ctx.save();
                 ctx.beginPath();
@@ -890,9 +929,11 @@
                 ctx.restore();
             }
 
-            // --- 3. 5親等以内のIDリストを事前計算 ---
+            // --- 3. ハイライト判定データの準備 ---
+            const currentMode = getSelectedHighlightMode();
             let relativeIds = new Set();
-            if (hoveredCreature) {
+            
+            if (hoveredCreature && currentMode === '5degrees') {
                 relativeIds = getRelativesWithin5Degrees(hoveredCreature.id);
             }
 
@@ -901,8 +942,17 @@
                 const c = creatures[i];
                 c.update(simDt, creatures);
                 
-                // 5親等以内に入っている個体だけ光るフラグを渡して描画
-                c.draw(relativeIds.has(c.id)); 
+                // ハイライト条件判定
+                let isHighlighted = false;
+                if (hoveredCreature) {
+                    if (currentMode === '5degrees') {
+                        isHighlighted = relativeIds.has(c.id);
+                    } else { // 'all' (一族全員)
+                        isHighlighted = (c.familyId === hoveredCreature.familyId);
+                    }
+                }
+
+                c.draw(isHighlighted); 
 
                 // 分裂（クローン）処理
                 if (c.hp >= 15) {
@@ -916,7 +966,7 @@
                     cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                     cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                    // 親のID（c.id）を渡すことで、家系グラフにエッジを追加します
+                    // 親のIDを託して新規個体を生成
                     const clone = new Creature(cloneX, cloneY, c.genes.rock, c.genes.scissors, c.genes.paper, c.familyId, c.id);
 
                     const mutationRate = parseFloat(mutRateSlider.value) / 100;
