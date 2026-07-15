@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (ファミリー追跡版)</title>
+    <title>じゃんけん生態系シミュレーター (150px-50体調整版)</title>
     <style>
         body {
             margin: 0;
@@ -343,7 +343,7 @@
         <div id="info">
             【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置</strong>してください。<br>
             現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
-            <span style="color: #1abc9c; font-weight: bold;">※ 周囲（半径200px）に他個体が多いと密状態になりHP減少が加速します（25体で4倍速）。</span>
+            <span style="color: #1abc9c; font-weight: bold;">※ 周囲（半径150px）に他個体が多いと密状態になりHP減少が加速します（50体で4倍速）。</span>
         </div>
     </div>
 
@@ -428,7 +428,7 @@
                 this.simulatedAge += simDt;
 
                 // --- 密度依存型HP減少システム ---
-                const CROWD_RADIUS = 200; 
+                const CROWD_RADIUS = 150; // 【変更】判定距離を200pxから150pxに調整
                 let neighborCount = 0;
 
                 for (let i = 0; i < allCreatures.length; i++) {
@@ -440,8 +440,9 @@
                     }
                 }
 
-                // 25体で4.0倍
-                const densityMultiplier = 0.4 + neighborCount * 0.144;
+                // 【変更】50体で4.0倍になるように設計
+                // 0体：0.4倍 / 約8体：約1.0倍(基準) / 50体：4.0倍
+                const densityMultiplier = 0.4 + neighborCount * 0.072;
 
                 this.lastNeighborCount = neighborCount;
                 this.lastMultiplier = densityMultiplier;
@@ -464,11 +465,10 @@
                 const green = Math.floor(this.genes.scissors * 255);
                 const blue = Math.floor(this.genes.paper * 255);
 
-                // 【新規】同根の生き物の場合、ぼんやり光るオーラを描画
+                // 同根の生き物の場合、ぼんやり光るオーラを描画
                 if (isRelated) {
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius + 6, 0, Math.PI * 2);
-                    // 個体自身の遺伝子カラーを半透明にして重ねて発光を表現
                     ctx.fillStyle = `rgba(${red}, ${green}, ${blue}, 0.4)`; 
                     ctx.shadowBlur = 10;
                     ctx.shadowColor = `rgb(${red}, ${green}, ${blue})`;
@@ -619,7 +619,6 @@
                 p = pW / sum;
             }
 
-            // 新規配置された個体（familyId は自動で新しくなる）
             creatures.push(new Creature(x, y, r, s, p));
             countBadge.textContent = creatures.length;
         });
@@ -770,7 +769,7 @@
             const simDt = 16.67 * timeScale;
 
             // --- 1. ホバー検出 ---
-            let closestDist = 20; // 判定距離は20px（合わせやすく）
+            let closestDist = 20; 
             let tempHovered = null;
 
             for (let i = 0; i < creatures.length; i++) {
@@ -783,17 +782,15 @@
             }
             hoveredCreature = tempHovered;
 
-            // --- 2. ホバーされた個体の「200px可視化」を描く (一番奥に描く) ---
+            // --- 2. ホバーされた個体の「150px可視化」を描く (一番奥に描く) ---
             if (hoveredCreature) {
                 ctx.save();
                 ctx.beginPath();
-                ctx.arc(hoveredCreature.x, hoveredCreature.y, 200, 0, Math.PI * 2);
+                ctx.arc(hoveredCreature.x, hoveredCreature.y, 150, 0, Math.PI * 2); // 【変更】半径を150pxに可視化
                 
-                // 判定円の背景をうっすら明るく
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
                 ctx.fill();
 
-                // 判定境界線をダッシュ（破線）でスタイリッシュに
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
                 ctx.lineWidth = 1.5;
                 ctx.setLineDash([6, 4]); 
@@ -808,7 +805,7 @@
             for (let i = 0; i < creatures.length; i++) {
                 const c = creatures[i];
                 c.update(simDt, creatures);
-                c.draw(activeFamilyId); // ホバーしている一族を伝える
+                c.draw(activeFamilyId); 
 
                 // 分裂（クローン）処理
                 if (c.hp >= 15) {
@@ -822,7 +819,6 @@
                     cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                     cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                    // 親の「familyId」を引き継いで子を生成！
                     const clone = new Creature(cloneX, cloneY, c.genes.rock, c.genes.scissors, c.genes.paper, c.familyId);
 
                     const mutationRate = parseFloat(mutRateSlider.value) / 100;
@@ -847,7 +843,6 @@
 
             countBadge.textContent = creatures.length;
 
-            // サイドパネルの情報を更新
             updateStatusPanel();
 
             requestAnimationFrame(loop);
