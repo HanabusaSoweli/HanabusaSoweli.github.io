@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (完全修正版)</title>
+    <title>じゃんけん生態系シミュレーター (純粋進化版)</title>
     <style>
         body {
             margin: 0;
@@ -147,7 +147,7 @@
         <div id="info">
             【操作方法】スライダーを設定し、<strong style="color: #fff;">画面をクリックして配置</strong>してください。<br>
             現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
-            <span style="color: #f1c40f; font-weight: bold;">※ 突然変異は分裂してクローンが生まれた瞬間のみ、確率で発生します。</span>
+            <span style="color: #1abc9c; font-weight: bold;">※ 各個体の色は一生固定されます。突然変異は分裂した子どものみに発生します。</span>
         </div>
     </div>
 
@@ -172,7 +172,6 @@
         const mutAmtVal = document.getElementById('mutAmtVal');
 
         const SPEED_MULT = 0.25; 
-        const INFLUENCE_RATE = 0.15; 
 
         class Creature {
             constructor(x, y, r, s, p) {
@@ -322,7 +321,7 @@
             } else {
                 r = rW / sum;
                 s = sW / sum;
-                p = pW / sum; // ★【修正】ここが抜けていたため、パー（青）が反映されていませんでした！
+                p = pW / sum;
             }
 
             creatures.push(new Creature(x, y, r, s, p));
@@ -391,28 +390,17 @@
                         const hand2 = c2.decideHand();
                         const result = playJanken(hand1, hand2);
 
+                        // --- 【完全解決】ぶつかり合いによる遺伝子・色の同調処理（absorb）を完全に削除しました！ ---
                         if (result === 1) {
-                            absorb(c1, c2);
                             c1.hp += 1;
                             c2.hp -= 1;
                         } else if (result === -1) {
-                            absorb(c2, c1);
                             c2.hp += 1;
                             c1.hp -= 1;
                         }
                     }
                 }
             }
-        }
-
-        function absorb(winner, loser) {
-            for (const key in loser.genes) {
-                loser.genes[key] += (winner.genes[key] - loser.genes[key]) * INFLUENCE_RATE;
-            }
-            const sum = loser.genes.rock + loser.genes.scissors + loser.genes.paper;
-            loser.genes.rock /= sum;
-            loser.genes.scissors /= sum;
-            loser.genes.paper /= sum;
         }
 
         function loop() {
@@ -444,7 +432,7 @@
                     const mutationRate = parseFloat(mutRateSlider.value) / 100;
                     if (Math.random() < mutationRate) {
                         const mutationAmount = parseFloat(mutAmtSlider.value) / 100;
-                        clone.mutate(mutationAmount); // クローン側だけ突然変異させる
+                        clone.mutate(mutationAmount); 
                     }
 
                     nextCreatures.push(clone);
