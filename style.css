@@ -1,0 +1,168 @@
+@charset "UTF-8";
+
+/* 全体の基本設定 */
+body {
+	background: rgb(240,232,198);
+	margin: 0;
+	padding: 0;
+	line-height: 1.6;
+	font-family: sans-serif;
+}
+
+/* レイアウトの土台（Flexboxを使用） */
+#outer {
+	background-color: #fff;
+	margin: 0 auto;
+	width: 900px;
+	display: flex;
+	flex-wrap: wrap; /* 子要素を折り返せるようにする */
+}
+
+/* ヘッダー */
+header {
+	width: 100%; /* 横幅いっぱいに広げる */
+	padding: 20px 20px 10px 30px;
+	box-sizing: border-box;
+	height: 120px;
+	background: linear-gradient(to bottom, #fcfaf0, #fff);
+}
+
+h1 {
+	font-size: 28px;
+	margin: 0;
+	padding: 10px 0 0 0;
+}
+
+h1 a {
+	font-weight: bold;
+	color: #000;
+	text-decoration: none;
+}
+
+h1 a:hover {
+	text-decoration: underline;
+}
+
+/* メインコンテンツ（左側） */
+#content {
+	width: 620px;
+	box-sizing: border-box;
+}
+
+.inner {
+	margin: 0 10px;
+	padding: 10px 10px 20px 20px;
+}
+
+h2 {
+	font-size: 18px;
+	margin: 10px 0;
+	padding: 10px;
+	background-color: #E7F5FD;
+	border: 1px solid #C7DBE5;
+}
+
+h2 a {
+	font-weight: bold;
+	text-decoration: none;
+	color: #265699;
+}
+
+p {
+	margin: 1em 0;
+}
+
+/* サイドバー（右側） */
+aside {
+	color: #676767;
+	font-size: 13px;
+	font-weight: normal;
+	width: 280px;
+	padding: 17px 0 0 0;
+	box-sizing: border-box;
+}
+
+.right-title {
+	font-size: 15px;
+	margin: 0 26px 0 0;
+	padding: 6px 10px 6px 20px;
+	font-weight: bold;
+	background-color: #C4F0EF;
+	color: #666;
+	border-top: 1px solid #ccc;
+	border-right: 1px solid #ccc;
+	border-left: 1px solid #ccc;
+}
+
+.link {
+	margin: 0 26px 15px 0;
+	padding: 16px 10px 10px 14px;
+	border: 1px solid #c7c7c7;
+	background-color: #fff;
+}
+
+.link a {
+	font-weight: normal;
+	font-size: 14px;
+	color: #003366;
+	text-decoration: none;
+}
+
+.link a:hover {
+	text-decoration: underline;
+}
+
+ul {
+	margin: 0 0 0 1em;
+	padding: 0;
+}
+
+.link li {
+	list-style: none;
+	margin-bottom: 8px;
+}
+
+/* フッター */
+footer {
+	width: 100%; /* 横幅いっぱいに広げる */
+	color: #666;
+	font-size: 13px;
+	height: 80px;
+	text-align: center;
+	padding-top: 20px;
+	box-sizing: border-box;
+	border-top: 1px solid #eee;
+}
+
+/* その他共通要素 */
+img {
+	max-width: 100%;
+	height: auto;
+	border: 0;
+}
+
+/* --- レスポンシブ対応（横幅が狭いスマホ等の見え方） --- */
+@media screen and (max-width: 768px) {
+	#outer {
+		width: 100%;
+		flex-direction: column; /* 縦並びに切り替え */
+	}
+	
+	#content, aside {
+		width: 100%;
+		padding: 0;
+	}
+	
+	.inner {
+		margin: 0;
+		padding: 15px;
+	}
+	
+	aside {
+		padding: 15px;
+	}
+	
+	.right-title, .link {
+		margin: 0;
+	}
+}
