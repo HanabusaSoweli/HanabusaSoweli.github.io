@@ -305,8 +305,8 @@
                             <input type="color" id="newHandColor" value="#e74c3c" style="width: 28px; height: 24px; border: none; padding: 0; background: none; cursor: pointer;">
                         </div>
                         <div>
-                            <span style="color: #aaa; font-weight: bold;">勝つ相手（複数選択可）:</span>
-                            <div id="beatsCheckboxes" style="display: flex; flex-direction: column; gap: 4px; max-height: 80px; overflow-y: auto; background: #111; padding: 6px; border-radius: 4px; margin-top: 4px; border: 1px solid #444;">
+                            <span style="color: #aaa; font-weight: bold;">既存の手との相性（新手から見て）:</span>
+                            <div id="beatsCheckboxes" style="display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto; background: #111; padding: 6px; border-radius: 4px; margin-top: 4px; border: 1px solid #444;">
                                 </div>
                         </div>
                         <button id="submitAddHandBtn" style="background: #2ecc71; color: #fff; border: none; border-radius: 4px; padding: 6px; cursor: pointer; font-weight: bold; font-size: 11px;">登録を確定</button>
@@ -454,7 +454,6 @@
         }
 
         class Creature {
-            // 第3引数を「遺伝子比率オブジェクト」に変更して汎用性を確保
             constructor(x, y, genes, familyId, parentId = null) {
                 this.id = ++creatureIdCounter; // ユニークID
                 
@@ -527,7 +526,7 @@
 
                 this.simulatedAge += simDt;
 
-                // 密度依存型HP減少システム (150px-50体で4倍調整)
+                // 密度依存型HP減少システム
                 const CROWD_RADIUS = 150; 
                 let neighborCount = 0;
 
@@ -554,7 +553,6 @@
                 }
             }
 
-            // 【新設計】すべての手を動的ブレンドして描画
             draw(isHighlighted) {
                 ctx.save();
 
@@ -572,7 +570,7 @@
                 });
 
                 if (totalWeight === 0) {
-                    rSum = gSum = bSum = 255; // 異常時フォールバック
+                    rSum = gSum = bSum = 255; 
                 }
 
                 const red = Math.floor(rSum);
@@ -580,7 +578,6 @@
                 const blue = Math.floor(bSum);
                 const baseColorStr = `rgb(${red}, ${green}, ${blue})`;
 
-                // ハイライト時に、その個体のブレンド色に応じた美しいオーラを描画
                 if (isHighlighted) {
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius + 6, 0, Math.PI * 2);
@@ -616,7 +613,7 @@
                 ctx.restore(); 
             }
 
-            // 手の決定（動的に蓄積確率を計算）
+            // 手の決定
             decideHand() {
                 const rand = Math.random();
                 let cumulative = 0;
@@ -630,12 +627,10 @@
                 return hands[hands.length - 1].id;
             }
 
-            // 遺伝子変異（何通りになっても対応）
             mutate(mutationAmount) {
                 if (hands.length < 2) return;
 
                 const activeHandIds = hands.map(h => h.id);
-                // ランダムに「減らす遺伝子」と「増やす遺伝子」を決める
                 const loseAttr = activeHandIds[Math.floor(Math.random() * activeHandIds.length)];
                 let gainAttr;
                 do {
@@ -649,7 +644,6 @@
                 this.genes[loseAttr] -= actualN;
                 this.genes[gainAttr] += actualN;
 
-                // 変異後に総和1へと再調整
                 let sum = 0;
                 activeHandIds.forEach(id => sum += (this.genes[id] || 0));
                 if (sum > 0) {
@@ -660,7 +654,6 @@
 
         let creatures = [];
 
-        // 現在選択されているハイライトモード取得
         function getSelectedHighlightMode() {
             for (const r of highlightRadios) {
                 if (r.checked) return r.value;
@@ -668,7 +661,7 @@
             return '5degrees';
         }
 
-        // --- 【BFSアルゴリズム】ホバー対象から5親等以内の個体IDを取得 ---
+        // BFSアルゴリズムによる5親等以内の取得
         function getRelativesWithin5Degrees(startId) {
             const relatives = new Set();
             const queue = [{ id: startId, dist: 0 }];
@@ -694,7 +687,6 @@
             return relatives;
         }
 
-        // --- 【GC処理】使わなくなった古い家系グラフデータを掃除 ---
         function cleanUpFamilyGraph() {
             const activeIds = new Set();
             const visited = new Set();
@@ -738,7 +730,7 @@
             }
         }
 
-        // --- 【新機能】手のマスターリストのHTML生成と管理 ---
+        // 手のマスターリストのHTML生成
         function renderHandList() {
             handListContainer.innerHTML = '';
             hands.forEach(h => {
@@ -754,7 +746,7 @@
                 // 相性ルールの文字列表現
                 const winTargets = h.beats.map(id => {
                     const found = hands.find(item => item.id === id);
-                    return found ? found.name.split(' ')[0] : ''; // 絵文字だけ取り出す
+                    return found ? found.name.split(' ')[0] : ''; 
                 }).filter(Boolean).join(', ');
 
                 div.innerHTML = `
@@ -768,7 +760,6 @@
                 handListContainer.appendChild(div);
             });
 
-            // 削除ボタンのリスナー追加
             document.querySelectorAll('.delete-hand-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const targetId = btn.dataset.id;
@@ -777,14 +768,11 @@
                         return;
                     }
                     
-                    // リストから消去
                     hands = hands.filter(h => h.id !== targetId);
-                    // 他の手の勝利リスト（beats）からも該当IDを消去
                     hands.forEach(h => {
                         h.beats = h.beats.filter(id => id !== targetId);
                     });
 
-                    // 生きている生き物の遺伝子情報から削除した手を消去して再正規化
                     creatures.forEach(c => {
                         delete c.genes[targetId];
                         let sum = 0;
@@ -803,13 +791,11 @@
             });
         }
 
-        // --- 【新機能】誕生時の初期遺伝子スライダーの動的生成 ---
         function renderDynamicSliders() {
-            // 現行のスライダー値が残っていたら一旦確保
             const currentValues = {};
             hands.forEach(h => {
                 const el = document.getElementById(`weight_${h.id}`);
-                currentValues[h.id] = el ? el.value : 50; // デフォルト50
+                currentValues[h.id] = el ? el.value : 50; 
             });
 
             dynamicSlidersContainer.innerHTML = '';
@@ -829,7 +815,6 @@
                 `;
                 dynamicSlidersContainer.appendChild(group);
 
-                // 動的スライダー用の双方向同期
                 const slider = document.getElementById(`weight_${h.id}`);
                 const num = document.getElementById(`num_${h.id}`);
 
@@ -858,7 +843,6 @@
             });
         }
 
-        // スライダーから遺伝子を割合計算する
         function getInitialGenes() {
             const weights = {};
             let sum = 0;
@@ -877,23 +861,43 @@
             return weights;
         }
 
-        // 新しい手を追加するための「勝つ相手」リストをポップアップ内に構築
-        function populateBeatsCheckboxes() {
+        // --- 【新機能】新しい手と既存の手の「勝ち・負け・あいこ」ラジオ設定UIを生成 ---
+        function populateRelationshipInputs() {
             beatsCheckboxes.innerHTML = '';
-            hands.forEach(h => {
-                const label = document.createElement('label');
-                label.className = 'radio-label';
-                label.style.fontSize = '11px';
-                label.style.display = 'flex';
-                label.style.alignItems = 'center';
-                label.style.gap = '4px';
+            
+            if (hands.length === 0) {
+                beatsCheckboxes.innerHTML = '<div style="color:#888; font-size:11px; text-align:center;">既存の手がありません</div>';
+                return;
+            }
 
-                label.innerHTML = `
-                    <input type="checkbox" value="${h.id}" class="beats-checkbox" style="margin: 0;">
-                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${h.color};"></span>
-                    <span>${h.name}</span>
+            hands.forEach(h => {
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.justifyContent = 'space-between';
+                row.style.background = '#222';
+                row.style.padding = '4px 6px';
+                row.style.borderRadius = '4px';
+                row.style.marginBottom = '2px';
+
+                row.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 4px; width: 80px; min-width: 80px;">
+                        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${h.color}; flex-shrink:0;"></span>
+                        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:bold; font-size:11px;" title="${h.name}">${h.name}</span>
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <label style="display:flex; align-items:center; gap:1px; cursor:pointer; color:#2ecc71; font-size:10px;">
+                            <input type="radio" name="rel_${h.id}" value="win" style="margin:0; width:12px; height:12px;">勝
+                        </label>
+                        <label style="display:flex; align-items:center; gap:1px; cursor:pointer; color:#e74c3c; font-size:10px;">
+                            <input type="radio" name="rel_${h.id}" value="lose" style="margin:0; width:12px; height:12px;">負
+                        </label>
+                        <label style="display:flex; align-items:center; gap:1px; cursor:pointer; color:#aaa; font-size:10px;">
+                            <input type="radio" name="rel_${h.id}" value="draw" checked style="margin:0; width:12px; height:12px;">引分
+                        </label>
+                    </div>
                 `;
-                beatsCheckboxes.appendChild(label);
+                beatsCheckboxes.appendChild(row);
             });
         }
 
@@ -908,10 +912,25 @@
             }
 
             const newId = 'hand_' + Date.now();
-            const checkedBoxes = beatsCheckboxes.querySelectorAll('.beats-checkbox:checked');
-            const beats = Array.from(checkedBoxes).map(cb => cb.value);
+            const beats = [];
 
-            // リストに登録
+            // 各既存の手との関係性を読み取って、相互関係を定義
+            hands.forEach(h => {
+                const radio = document.querySelector(`input[name="rel_${h.id}"]:checked`);
+                if (radio) {
+                    const relation = radio.value;
+                    if (relation === 'win') {
+                        // 新手が既存の手に勝つ（新手の勝利リストに追加）
+                        beats.push(h.id);
+                    } else if (relation === 'lose') {
+                        // 既存の手が新手に勝つ（既存側の勝利リストに新規IDを追加）
+                        h.beats.push(newId);
+                    }
+                    // 'draw' (引き分け) の場合は、お互いの勝利リストに入れないだけで実現可能
+                }
+            });
+
+            // 新手をリストに登録
             hands.push({
                 id: newId,
                 name: name,
@@ -928,21 +947,19 @@
             newHandName.value = '';
             addHandForm.style.display = 'none';
 
-            // リレンダリング
             renderHandList();
             renderDynamicSliders();
         });
 
         // フォーム表示非表示制御
         showAddHandFormBtn.addEventListener('click', () => {
-            populateBeatsCheckboxes();
+            populateRelationshipInputs();
             addHandForm.style.display = 'flex';
         });
 
         closeAddHandFormBtn.addEventListener('click', () => {
             addHandForm.style.display = 'none';
         });
-
 
         // 固定環境設定用の同期
         const inputPairs = [
@@ -1006,10 +1023,7 @@
 
             if (hoveredCreature) return;
 
-            // 初期遺伝子を動的スライダーから取得
             const initGenes = getInitialGenes();
-
-            // 新個体を配置
             creatures.push(new Creature(x, y, initGenes));
             countBadge.textContent = creatures.length;
         });
@@ -1023,7 +1037,7 @@
             familyGraph.clear();
         });
 
-        // じゃんけん判定（何手あってもbeats配列ベースで一発判定）
+        // じゃんけん判定（お互いのbeatsリストを照合）
         function playJanken(handId1, handId2) {
             if (handId1 === handId2) return 0;
             
@@ -1031,12 +1045,10 @@
             const h2 = hands.find(h => h.id === handId2);
             if (!h1 || !h2) return 0;
 
-            // 1が2に勝つ場合
             if (h1.beats.includes(handId2)) return 1;
-            // 2が1に勝つ場合
             if (h2.beats.includes(handId1)) return -1;
             
-            return 0; // すくみの関係にない場合は引き分け
+            return 0; // すくみの関係にない、あるいは「引き分け」に設定されている場合はあいこ
         }
 
         function handleCollisions() {
@@ -1106,7 +1118,6 @@
 
             const c = hoveredCreature;
             
-            // 手の数に合わせて「遺伝子メーター」を動的構築
             let geneBarsHtml = '';
             hands.forEach(h => {
                 const percent = Math.round((c.genes[h.id] || 0) * 100);
@@ -1156,12 +1167,10 @@
             const simDt = 16.67 * timeScale;
             frameCount++;
 
-            // 3秒に一度のGC処理
             if (frameCount % 180 === 0) {
                 cleanUpFamilyGraph();
             }
 
-            // --- 1. ホバー検出 ---
             let closestDist = 20; 
             let tempHovered = null;
 
@@ -1175,7 +1184,6 @@
             }
             hoveredCreature = tempHovered;
 
-            // --- 2. 150pxの過密判定エリア可視化を描く ---
             if (hoveredCreature) {
                 ctx.save();
                 ctx.beginPath();
@@ -1192,7 +1200,6 @@
                 ctx.restore();
             }
 
-            // --- 3. ハイライト判定データの準備 ---
             const currentMode = getSelectedHighlightMode();
             let relativeIds = new Set();
             
@@ -1200,24 +1207,21 @@
                 relativeIds = getRelativesWithin5Degrees(hoveredCreature.id);
             }
 
-            // --- 4. 生き物たちのアップデートと描画 ---
             for (let i = 0; i < creatures.length; i++) {
                 const c = creatures[i];
                 c.update(simDt, creatures);
                 
-                // ハイライト条件判定
                 let isHighlighted = false;
                 if (hoveredCreature) {
                     if (currentMode === '5degrees') {
                         isHighlighted = relativeIds.has(c.id);
-                    } else { // 'all' (一族全員)
+                    } else { 
                         isHighlighted = (c.familyId === hoveredCreature.familyId);
                     }
                 }
 
                 c.draw(isHighlighted); 
 
-                // 分裂（クローン）処理
                 if (c.hp >= 15) {
                     c.hp -= 5; 
 
@@ -1229,7 +1233,6 @@
                     cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                     cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                    // 親の遺伝子オブジェクトをそのままシャローコピーして新しいクローンを作成
                     const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.id);
 
                     const mutationRate = parseFloat(mutRateSlider.value) / 100;
@@ -1259,7 +1262,6 @@
             requestAnimationFrame(loop);
         }
 
-        // 起動時初期レンダリング
         renderHandList();
         renderDynamicSliders();
         loop();
