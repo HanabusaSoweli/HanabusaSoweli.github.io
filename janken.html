@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (ジェネシス版)</title>
+    <title>じゃんけん生態系シミュレーター (重み設定版)</title>
     <style>
         body {
             margin: 0;
@@ -27,7 +27,7 @@
             border: 2px solid #555;
             background-color: #111;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            cursor: crosshair; /* クリックしやすいようにカーソルを変更 */
+            cursor: crosshair;
         }
         #controls {
             background-color: #333;
@@ -53,7 +53,6 @@
         .slider-group input {
             width: 120px;
         }
-        /* スライダーの色をカスタム（直感的になるように） */
         #rockWeight { accent-color: #ff4a4a; }
         #scissorsWeight { accent-color: #4aff4a; }
         #paperWeight { accent-color: #4a4aff; }
@@ -90,15 +89,15 @@
         
         <div id="controls">
             <div class="slider-group">
-                <label>✊ グー (赤): <span id="rockVal">33%</span></label>
+                <label>✊ グー (赤): <span id="rockVal">50</span></label>
                 <input type="range" id="rockWeight" min="0" max="100" value="50">
             </div>
             <div class="slider-group">
-                <label>✌️ チョキ (緑): <span id="scissorsVal">33%</span></label>
+                <label>✌️ チョキ (緑): <span id="scissorsVal">50</span></label>
                 <input type="range" id="scissorsWeight" min="0" max="100" value="50">
             </div>
             <div class="slider-group">
-                <label>🖐️ パー (青): <span id="paperVal">34%</span></label>
+                <label>🖐️ パー (青): <span id="paperVal">50</span></label>
                 <input type="range" id="paperWeight" min="0" max="100" value="50">
             </div>
             <button id="clearBtn">クリア (全消去)</button>
@@ -107,7 +106,7 @@
         <canvas id="simCanvas" width="800" height="500"></canvas>
         
         <div id="info">
-            【操作方法】スライダーで確率の比率を決め、<strong style="color: #fff;">黒い画面をクリック</strong>して生き物を配置してください。<br>
+            【操作方法】スライダーで出現させたい手の「重み（0〜100）」を決め、<strong style="color: #fff;">黒い画面をクリック</strong>して配置してください。<br>
             現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
             赤: グー多め / 緑: チョキ多め / 青: パー多め
         </div>
@@ -133,7 +132,6 @@
         const SPEED_MULT = 0.25; // 速度1/4倍
 
         class Creature {
-            // コンストラクタで遺伝子（r, s, p）を直接受け取るように変更
             constructor(x, y, r, s, p) {
                 this.x = x;
                 this.y = y;
@@ -145,7 +143,6 @@
                 this.vx = Math.cos(angle) * speed;
                 this.vy = Math.sin(angle) * speed;
 
-                // 指定された比率（正規化済み）をセット
                 this.genes = { rock: r, scissors: s, paper: p };
             }
 
@@ -212,44 +209,27 @@
             }
         }
 
-        // --- 修正点: 最初は何もいない空の配列からスタート ---
         const creatures = [];
 
-        // スライダーの値から、実際のパーセンテージ（比率）をリアルタイム計算して表示する関数
+        // --- 修正点: ％変換を行わず、スライダーの値をそのまま表示 ---
         function updateSliderLabels() {
-            const r = parseFloat(rockSlider.value);
-            const s = parseFloat(scissorsSlider.value);
-            const p = parseFloat(paperSlider.value);
-            const sum = r + s + p;
-
-            if (sum === 0) {
-                rockVal.textContent = "0%";
-                scissorsVal.textContent = "0%";
-                paperVal.textContent = "0%";
-                return;
-            }
-
-            rockVal.textContent = Math.round((r / sum) * 100) + "%";
-            scissorsVal.textContent = Math.round((s / sum) * 100) + "%";
-            paperVal.textContent = Math.round((p / sum) * 100) + "%";
+            rockVal.textContent = rockSlider.value;
+            scissorsVal.textContent = scissorsSlider.value;
+            paperVal.textContent = paperSlider.value;
         }
 
-        // スライダーを動かしたときに表示を更新するイベント
         [rockSlider, scissorsSlider, paperSlider].forEach(slider => {
             slider.addEventListener('input', updateSliderLabels);
         });
 
-        // 初期表示用
+        // 初期表示
         updateSliderLabels();
 
-        // --- 新機能: クリックで生き物を追加する処理 ---
         canvas.addEventListener('mousedown', (e) => {
-            // キャンバス内のクリック相対座標を取得
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            // スライダーの比率を取得して正規化（合計1.0にする）
             const rW = parseFloat(rockSlider.value);
             const sW = parseFloat(scissorsSlider.value);
             const pW = parseFloat(paperSlider.value);
@@ -257,7 +237,7 @@
 
             let r, s, p;
             if (sum === 0) {
-                // すべて0の場合は均等（1/3ずつ）にする
+                // 全て0の時は等倍
                 r = s = p = 1/3;
             } else {
                 r = rW / sum;
@@ -265,16 +245,12 @@
                 p = pW / sum;
             }
 
-            // 新しい生き物を配列に追加
             creatures.push(new Creature(x, y, r, s, p));
-            
-            // 個体数表示を更新
             countBadge.textContent = creatures.length;
         });
 
-        // --- 新機能: 全クリアボタン ---
         clearBtn.addEventListener('click', () => {
-            creatures.length = 0; // 配列を空にする
+            creatures.length = 0;
             countBadge.textContent = 0;
         });
 
@@ -302,7 +278,6 @@
                     const minDist = c1.radius + c2.radius;
 
                     if (distance < minDist) {
-                        // 弾性衝突の物理挙動
                         const nx = dx / distance;
                         const ny = dy / distance;
                         const rvx = c2.vx - c1.vx;
@@ -312,7 +287,7 @@
                         if (velAlongNormal < 0) {
                             const restitution = 1.0;
                             let jImpulse = -(1 + restitution) * velAlongNormal;
-                            jImpulse /= (2); // 質量1+1=2
+                            jImpulse /= (2);
 
                             const impulseX = jImpulse * nx;
                             const impulseY = jImpulse * ny;
@@ -328,7 +303,6 @@
                         c2.x += nx * overlap;
                         c2.y += ny * overlap;
 
-                        // じゃんけん処理
                         const hand1 = c1.decideHand();
                         const hand2 = c2.decideHand();
                         const result = playJanken(hand1, hand2);
