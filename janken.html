@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (カスタムハンド＆系統樹版)</title>
+    <title>じゃんけん生態系シミュレーター (大画面系統樹＆トグル版)</title>
     <style>
         body {
             margin: 0;
@@ -11,28 +11,37 @@
             color: #fff;
             font-family: sans-serif;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
             overflow: hidden;
         }
-        #container {
+        
+        /* 【大きな変更】アプリ全体を左右に二分する最外レイアウト */
+        #app-wrapper {
+            display: flex;
+            gap: 20px;
+            width: 98%;
+            max-width: 1650px;
+            height: 92vh;
+            align-items: stretch; /* 左右のパーツの縦幅を揃える */
+        }
+
+        /* 左側エリア：タイトル、コントロール、キャンバス、詳細パネルをまとめる */
+        #left-area {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            width: 95%;
-            max-width: 1400px; /* 家系図パネル追加に伴い横幅を拡張 */
+            gap: 12px;
+            min-width: 0;
         }
         
-        /* 左右レイアウト用ラッパー */
+        /* 左側エリア内の下部（Canvas と ステータスパネル） */
         #main-area {
             display: flex;
             gap: 15px;
             width: 100%;
-            justify-content: center;
-            align-items: stretch;
+            align-items: flex-start;
         }
 
         canvas {
@@ -45,7 +54,7 @@
         /* 中央：ステータスパネル */
         #statusPanel {
             width: 250px;
-            height: 480px; /* Canvasの縦幅と一致させて固定 */
+            height: 480px; /* Canvasの縦幅と一致 */
             background-color: #2c2c2c;
             border: 2px solid #555;
             border-radius: 8px;
@@ -65,26 +74,26 @@
             text-align: center;
         }
 
-        /* 【新設】右側：種の家系図パネル */
+        /* 【大きな変更】右側：設定よりさらに右に、縦いっぱいに大きく配置 */
         #lineagePanel {
-            width: 280px;
-            height: 480px;
+            width: 360px; /* 横幅を大きく拡張 */
             background-color: #2c2c2c;
             border: 2px solid #555;
             border-radius: 8px;
-            padding: 15px;
+            padding: 18px;
             box-sizing: border-box;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
             display: flex;
             flex-direction: column;
             gap: 12px;
+            /* 親要素の align-items: stretch により、自動で縦いっぱいに広がります */
         }
         #lineagePanel h3 {
             margin: 0 0 5px 0;
             padding-bottom: 8px;
             border-bottom: 1px solid #555;
             color: #f1c40f;
-            font-size: 15px;
+            font-size: 16px;
             text-align: center;
         }
         #lineageContent {
@@ -149,7 +158,7 @@
             font-weight: bold;
         }
 
-        /* ブーストボタンのスタイル */
+        /* ブーストボタン */
         #boostBtn {
             width: 100%;
             padding: 8px;
@@ -179,7 +188,7 @@
             min-height: 0; 
         }
 
-        /* 遺伝子バーのビジュアル */
+        /* 遺伝子バー */
         .gene-bar-container {
             display: flex;
             flex-direction: column;
@@ -281,6 +290,7 @@
             align-items: center;
             border-top: 1px solid #444;
             padding-top: 10px;
+            gap: 10px;
         }
 
         #speed-control {
@@ -315,6 +325,18 @@
             font-weight: bold;
         }
 
+        /* 家系図トグル用のカスタムスタイル */
+        #toggleLineageBtn {
+            background-color: #27ae60;
+            color: white;
+            border-color: #1e8449;
+            font-weight: bold;
+        }
+        #toggleLineageBtn:hover {
+            background-color: #2196f3;
+            border-color: #1976d2;
+        }
+
         button#clearBtn {
             background-color: #e74c3c;
             color: white;
@@ -341,150 +363,151 @@
 </head>
 <body>
 
-    <div id="container">
-        <h2 style="margin: 0;">じゃんけん生態系シミュレーター (カスタムハンド＆系統樹版)</h2>
+    <!-- 左右分割構造のアプリケーションラッパー -->
+    <div id="app-wrapper">
         
-        <!-- コントロールパネル -->
-        <div id="controls">
-            <div class="control-grid">
-                
-                <!-- カラム1: 手のマスターリスト管理 -->
-                <div class="control-column" style="width: 280px;">
-                    <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">✋ 手のマスターリスト</h4>
-                    <div id="handListContainer" style="display: flex; flex-direction: column; gap: 4px; height: 110px; overflow-y: auto; background: #1e1e1e; padding: 6px; border-radius: 4px; border: 1px solid #444;">
-                        <!-- ここに登録されている手の一覧が動的に入る -->
-                    </div>
-                    <button id="showAddHandFormBtn" style="margin-top: 6px; font-size: 11px; padding: 5px; background: #3498db; color: #fff; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold;">＋ 新しい手を追加</button>
-                    
-                    <!-- 手の追加用フォーム -->
-                    <div id="addHandForm" style="display: none; background: #2c2c2c; border: 2px solid #555; padding: 10px; border-radius: 6px; font-size: 11px; flex-direction: column; gap: 8px; position: absolute; z-index: 20; width: 260px; top: 10px; left: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.6);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 4px;">
-                            <strong style="color: #3498db;">🖐️ 手の追加登録</strong>
-                            <button id="closeAddHandFormBtn" style="background: none; border: none; color: #aaa; cursor: pointer; font-size: 14px;">✕</button>
-                        </div>
-                        <div style="display: flex; gap: 6px; align-items: center;">
-                            <input type="text" id="newHandName" placeholder="例: ⚡ 雷" style="flex: 1; background: #111; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 4px; font-size: 11px; box-sizing: border-box;">
-                            <input type="color" id="newHandColor" value="#e74c3c" style="width: 28px; height: 24px; border: none; padding: 0; background: none; cursor: pointer;">
-                        </div>
-                        <div>
-                            <span style="color: #aaa; font-weight: bold;">既存の手との相性（新手から見て）:</span>
-                            <div id="beatsCheckboxes" style="display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto; background: #111; padding: 6px; border-radius: 4px; margin-top: 4px; border: 1px solid #444;">
-                                <!-- 関係性が自動生成 -->
-                            </div>
-                        </div>
-                        <button id="submitAddHandBtn" style="background: #2ecc71; color: #fff; border: none; border-radius: 4px; padding: 6px; cursor: pointer; font-weight: bold; font-size: 11px;">登録を確定</button>
-                    </div>
-                </div>
-
-                <!-- カラム2: 誕生時の初期遺伝子比率 -->
-                <div class="control-column" id="dynamicSlidersColumn" style="width: 280px;">
-                    <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">🧬 誕生時の初期遺伝子比率</h4>
-                    <div id="dynamicSlidersContainer" style="display: flex; flex-direction: column; gap: 6px; height: 140px; overflow-y: auto; padding-right: 5px;">
-                        <!-- スライダーが自動追加 -->
-                    </div>
-                </div>
-
-                <!-- カラム3: 环境・進化・密度パラメータ -->
-                <div class="control-column" style="width: 280px;">
-                    <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">⚙️ 環境・シミュレーション設定</h4>
-                    <div style="display: flex; flex-direction: column; gap: 6px; height: 140px; overflow-y: auto; padding-right: 5px;">
-                        <div class="slider-group" style="width: 100%;">
-                            <label>⏳ 基準HP減少間隔 (秒)</label>
-                            <div class="input-row">
-                                <input type="range" id="decayInterval" min="1" max="300" value="120">
-                                <input type="number" id="decayNum" min="1" max="300" value="120">
-                            </div>
-                        </div>
-                        <div class="slider-group" style="width: 100%;">
-                            <label>⚡ 分裂時変異率 (%)</label>
-                            <div class="input-row">
-                                <input type="range" id="mutRate" min="0" max="100" value="5">
-                                <input type="number" id="mutRateNum" min="0" max="100" value="5">
-                            </div>
-                        </div>
-                        <div class="slider-group" style="width: 100%;">
-                            <label>🔮 最大変異変化幅 (1%～設定値)</label>
-                            <div class="input-row">
-                                <input type="range" id="mutAmt" min="1" max="50" value="15">
-                                <input type="number" id="mutAmtNum" min="1" max="50" value="15">
-                            </div>
-                        </div>
-                        <div class="slider-group" style="width: 100%;">
-                            <label>📏 密度の判定半径 (px)</label>
-                            <div class="input-row">
-                                <input type="range" id="crowdRadius" min="10" max="300" value="50">
-                                <input type="number" id="crowdRadiusNum" min="10" max="300" value="50">
-                            </div>
-                        </div>
-                        <div class="slider-group" style="width: 100%;">
-                            <label>💀 即死基準の混雑個体数 (体)</label>
-                            <div class="input-row">
-                                <input type="range" id="crowdLimit" min="1" max="100" value="20">
-                                <input type="number" id="crowdLimitNum" min="1" max="100" value="20">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="control-bottom">
-                <div id="speed-control">
-                    <span>⏱️ 時間速度:</span>
-                    <button class="speed-btn" data-speed="0">0倍 (停止)</button>
-                    <button class="speed-btn" data-speed="0.25">1/4倍</button>
-                    <button class="speed-btn" data-speed="0.5">1/2倍</button>
-                    <button class="speed-btn active" data-speed="1">1倍 (標準)</button>
-                    <button class="speed-btn" data-speed="2">2倍</button>
-                    <button class="speed-btn" data-speed="4">4倍</button>
-                </div>
-                <button id="clearBtn">クリア</button>
-            </div>
-        </div>
-
-        <!-- メインシミュレーションエリア -->
-        <div id="main-area">
-            <canvas id="simCanvas" width="800" height="480"></canvas>
+        <!-- 左側メイン領域 -->
+        <div id="left-area">
+            <h2 style="margin: 0; text-align: center;">じゃんけん生態系シミュレーター (大画面系統樹＆トグル版)</h2>
             
-            <!-- 中央：詳細パネル -->
-            <div id="statusPanel">
-                <h3>🧬 個体ステータス</h3>
+            <!-- コントロールパネル -->
+            <div id="controls">
+                <div class="control-grid">
+                    
+                    <!-- カラム1: 手のマスターリスト管理 -->
+                    <div class="control-column" style="width: 280px;">
+                        <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">✋ 手のマスターリスト</h4>
+                        <div id="handListContainer" style="display: flex; flex-direction: column; gap: 4px; height: 110px; overflow-y: auto; background: #1e1e1e; padding: 6px; border-radius: 4px; border: 1px solid #444;"></div>
+                        <button id="showAddHandFormBtn" style="margin-top: 6px; font-size: 11px; padding: 5px; background: #3498db; color: #fff; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold;">＋ 新しい手を追加</button>
+                        
+                        <!-- 手の追加用フォーム -->
+                        <div id="addHandForm" style="display: none; background: #2c2c2c; border: 2px solid #555; padding: 10px; border-radius: 6px; font-size: 11px; flex-direction: column; gap: 8px; position: absolute; z-index: 20; width: 260px; top: 10px; left: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.6);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 4px;">
+                                <strong style="color: #3498db;">🖐️ 手の追加登録</strong>
+                                <button id="closeAddHandFormBtn" style="background: none; border: none; color: #aaa; cursor: pointer; font-size: 14px;">✕</button>
+                            </div>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <input type="text" id="newHandName" placeholder="例: ⚡ 雷" style="flex: 1; background: #111; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 4px; font-size: 11px; box-sizing: border-box;">
+                                <input type="color" id="newHandColor" value="#e74c3c" style="width: 28px; height: 24px; border: none; padding: 0; background: none; cursor: pointer;">
+                            </div>
+                            <div>
+                                <span style="color: #aaa; font-weight: bold;">既存の手との相性（新手から見て）:</span>
+                                <div id="beatsCheckboxes" style="display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto; background: #111; padding: 6px; border-radius: 4px; margin-top: 4px; border: 1px solid #444;"></div>
+                            </div>
+                            <button id="submitAddHandBtn" style="background: #2ecc71; color: #fff; border: none; border-radius: 4px; padding: 6px; cursor: pointer; font-weight: bold; font-size: 11px;">登録を確定</button>
+                        </div>
+                    </div>
+
+                    <!-- カラム2: 誕生時の初期遺伝子比率 -->
+                    <div class="control-column" id="dynamicSlidersColumn" style="width: 280px;">
+                        <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">🧬 誕生時の初期遺伝子比率</h4>
+                        <div id="dynamicSlidersContainer" style="display: flex; flex-direction: column; gap: 6px; height: 140px; overflow-y: auto; padding-right: 5px;"></div>
+                    </div>
+
+                    <!-- カラム3: 環境・進化・密度パラメータ -->
+                    <div class="control-column" style="width: 280px;">
+                        <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">⚙️ 環境・シミュレーション設定</h4>
+                        <div style="display: flex; flex-direction: column; gap: 6px; height: 140px; overflow-y: auto; padding-right: 5px;">
+                            <div class="slider-group" style="width: 100%;">
+                                <label>⏳ 基準HP減少間隔 (秒)</label>
+                                <div class="input-row">
+                                    <input type="range" id="decayInterval" min="1" max="300" value="120">
+                                    <input type="number" id="decayNum" min="1" max="300" value="120">
+                                </div>
+                            </div>
+                            <div class="slider-group" style="width: 100%;">
+                                <label>⚡ 分裂時変異率 (%)</label>
+                                <div class="input-row">
+                                    <input type="range" id="mutRate" min="0" max="100" value="5">
+                                    <input type="number" id="mutRateNum" min="0" max="100" value="5">
+                                </div>
+                            </div>
+                            <div class="slider-group" style="width: 100%;">
+                                <label>🔮 最大変異変化幅 (1%～設定値)</label>
+                                <div class="input-row">
+                                    <input type="range" id="mutAmt" min="1" max="50" value="15">
+                                    <input type="number" id="mutAmtNum" min="1" max="50" value="15">
+                                </div>
+                            </div>
+                            <div class="slider-group" style="width: 100%;">
+                                <label>📏 密度の判定半径 (px)</label>
+                                <div class="input-row">
+                                    <input type="range" id="crowdRadius" min="10" max="300" value="50">
+                                    <input type="number" id="crowdRadiusNum" min="10" max="300" value="50">
+                                </div>
+                            </div>
+                            <div class="slider-group" style="width: 100%;">
+                                <label>💀 即死基準の混雑個体数 (体)</label>
+                                <div class="input-row">
+                                    <input type="range" id="crowdLimit" min="1" max="100" value="20">
+                                    <input type="number" id="crowdLimitNum" min="1" max="100" value="20">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-bottom">
+                    <div id="speed-control">
+                        <span>⏱️ 時間速度:</span>
+                        <button class="speed-btn" data-speed="0">0倍 (停止)</button>
+                        <button class="speed-btn" data-speed="0.25">1/4倍</button>
+                        <button class="speed-btn" data-speed="0.5">1/2倍</button>
+                        <button class="speed-btn active" data-speed="1">1倍 (標準)</button>
+                        <button class="speed-btn" data-speed="2">2倍</button>
+                        <button class="speed-btn" data-speed="4">4倍</button>
+                    </div>
+                    
+                    <!-- 【新設】家系図表示切り替えトグルボタン -->
+                    <button id="toggleLineageBtn" class="speed-btn">🌳 家系図: 表示中</button>
+
+                    <button id="clearBtn">クリア</button>
+                </div>
+            </div>
+
+            <!-- シミュレーションメインエリア -->
+            <div id="main-area">
+                <canvas id="simCanvas" width="800" height="480"></canvas>
                 
-                <!-- 系統ハイライトのトグル設定 -->
-                <div id="highlightConfig">
-                    <div class="highlight-title">💡 ハイライト対象</div>
-                    <div class="radio-group">
-                        <label class="radio-label">
-                            <input type="radio" name="highlightMode" value="pureLineage" checked> 突然変異していない範囲の一族全員
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="highlightMode" value="all"> 一族全員
-                        </label>
+                <!-- 詳細パネル -->
+                <div id="statusPanel">
+                    <h3>🧬 個体ステータス</h3>
+                    <div id="highlightConfig">
+                        <div class="highlight-title">💡 ハイライト対象</div>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="highlightMode" value="pureLineage" checked> 突然変異していない範囲の一族全員
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="highlightMode" value="all"> 一族全員
+                            </label>
+                        </div>
                     </div>
-                </div>
-
-                <div id="statusContent">
-                    <div class="status-placeholder">
-                        生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の一族全員が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
-                    </div>
-                </div>
-            </div>
-
-            <!-- 【新設】右側：全体の種の家系図パネル -->
-            <div id="lineagePanel">
-                <h3>🌳 種の家系図 (系統樹)</h3>
-                <div id="lineageContent">
-                    <div class="status-placeholder">
-                        画面をクリックして<br>生き物を配置すると<br>ここに系統樹（家系図）が<br>リアルタイムに形成されます。
+                    <div id="statusContent">
+                        <div class="status-placeholder">
+                            生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の一族全員が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
+                        </div>
                     </div>
                 </div>
             </div>
+            
+            <div id="info">
+                【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置 / 個体を選択</strong>してください。<br>
+                現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
+                <span style="color: #e74c3c; font-weight: bold;">※ 指定の判定半径内に制限以上の個体が高密度に集まると、その瞬間「即死」して消滅します。</span>
+            </div>
         </div>
-        
-        <div id="info">
-            【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置 / 個体を選択</strong>してください。<br>
-            現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
-            <span style="color: #e74c3c; font-weight: bold;">※ 指定の判定半径内に制限以上の個体が高密度に集まると、その瞬間「即死」して消滅します。</span>
+
+        <!-- 【位置変更＆巨大化】一番右側：全体の種の家系図パネル -->
+        <div id="lineagePanel">
+            <h3>🌳 種の家系図 (系統樹)</h3>
+            <div id="lineageContent">
+                <div class="status-placeholder">
+                    画面をクリックして<br>生き物を配置すると<br>ここに系統樹（家系図）が<br>リアルタイムに形成されます。
+                </div>
+            </div>
         </div>
+
     </div>
 
     <script>
@@ -500,9 +523,10 @@
         
         const statusContent = document.getElementById('statusContent');
         const lineageContent = document.getElementById('lineageContent');
+        const lineagePanel = document.getElementById('lineagePanel');
+        const toggleLineageBtn = document.getElementById('toggleLineageBtn');
         const highlightRadios = document.getElementsByName('highlightMode');
 
-        // 手の追加フォーム関連UI
         const addHandForm = document.getElementById('addHandForm');
         const showAddHandFormBtn = document.getElementById('showAddHandFormBtn');
         const closeAddHandFormBtn = document.getElementById('closeAddHandFormBtn');
@@ -516,27 +540,35 @@
         const SPEED_MULT = 0.25; 
         let timeScale = 1.0; 
 
-        // 密度設定のリアルタイム参照用変数
         let currentCrowdRadius = 50;
         let currentCrowdLimit = 20;
 
-        // --- 動的に増減可能なじゃんけんの手のマスターデータ ---
         let hands = [
             { id: 'rock', name: '✊ グー', color: '#ff4a4a', beats: ['scissors'] },
             { id: 'scissors', name: '✌️ チョキ', color: '#4aff4a', beats: ['paper'] },
             { id: 'paper', name: '🖐️ パー', color: '#4a4aff', beats: ['rock'] }
         ];
 
-        // --- 家系・ID管理システム ---
         let familyCounter = 0;
         let creatureIdCounter = 0;
-
-        // 【新設】家系図データを追跡・記憶するレジストリ
         let lineageRegistry = {};
-
-        // 選択中の個体管理
         let selectedCreature = null;
-        let lastSelectedCreatureId = null; // パネルの再構築判定用
+        let lastSelectedCreatureId = null;
+
+        // 【新設】家系図パネルの表示切り替え（トグル）機能
+        toggleLineageBtn.addEventListener('click', () => {
+            if (lineagePanel.style.display === 'none') {
+                lineagePanel.style.display = 'flex';
+                toggleLineageBtn.textContent = '🌳 家系図: 表示中';
+                toggleLineageBtn.style.backgroundColor = '#27ae60';
+                toggleLineageBtn.style.borderColor = '#1e8449';
+            } else {
+                lineagePanel.style.display = 'none';
+                toggleLineageBtn.textContent = '🌳 家系図: 非表示';
+                toggleLineageBtn.style.backgroundColor = '#7f8c8d';
+                toggleLineageBtn.style.borderColor = '#616a6b';
+            }
+        });
 
         function hexToRgb(hex) {
             let shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
@@ -551,11 +583,9 @@
             } : { r: 255, g: 255, b: 255 };
         }
 
-        // 個体の現在遺伝子からブレンドされたRGBカラー文字列を取得する共通関数
         function getCreatureColorString(genes) {
             let rSum = 0, gSum = 0, bSum = 0;
             let totalWeight = 0;
-
             hands.forEach(h => {
                 const weight = genes[h.id] || 0;
                 const rgb = hexToRgb(h.color);
@@ -564,7 +594,6 @@
                 bSum += rgb.b * weight;
                 totalWeight += weight;
             });
-
             if (totalWeight === 0) return 'rgb(255, 255, 255)';
             return `rgb(${Math.floor(rSum)}, ${Math.floor(gSum)}, ${Math.floor(bSum)})`;
         }
@@ -572,7 +601,6 @@
         class Creature {
             constructor(x, y, genes, familyId = null, lineageId = null) {
                 this.id = ++creatureIdCounter;
-                
                 this.x = x;
                 this.y = y;
                 this.radius = 8;
@@ -600,11 +628,8 @@
                 this.simulatedAge = 0;       
                 this.decayAccumulator = 0; 
 
-                // familyId: ルーツとなる大元の家系ID
                 this.familyId = familyId || `家系 #${++familyCounter}`;
-                // lineageId: 突然変異が起きるたびに分岐していく詳細な系統ID
                 this.lineageId = lineageId || this.familyId;
-
                 this.lastNeighborCount = 0;
             }
 
@@ -616,42 +641,24 @@
                 this.x += this.vx * timeScale;
                 this.y += this.vy * timeScale;
 
-                if (this.x - this.radius < 0) {
-                    this.x = this.radius;
-                    this.vx *= -1;
-                }
-                if (this.x + this.radius > canvas.width) {
-                    this.x = canvas.width - this.radius;
-                    this.vx *= -1;
-                }
-                if (this.y - this.radius < 0) {
-                    this.y = this.radius;
-                    this.vy *= -1;
-                }
-                if (this.y + this.radius > canvas.height) {
-                    this.y = canvas.height - this.radius;
-                    this.vy *= -1; 
-                }
+                if (this.x - this.radius < 0) { this.x = this.radius; this.vx *= -1; }
+                if (this.x + this.radius > canvas.width) { this.x = canvas.width - this.radius; this.vx *= -1; }
+                if (this.y - this.radius < 0) { this.y = this.radius; this.vy *= -1; }
+                if (this.y + this.radius > canvas.height) { this.y = canvas.height - this.radius; this.vy *= -1; }
 
                 this.simulatedAge += simDt;
 
-                // 密度チェック
                 let neighborCount = 0;
-                
                 if (!this.isInvincible()) {
                     for (let i = 0; i < allCreatures.length; i++) {
                         const other = allCreatures[i];
-                        if (other === this) continue;
-                        
-                        if (other.isInvincible()) continue;
-
+                        if (other === this || other.isInvincible()) continue;
                         const dist = Math.hypot(other.x - this.x, other.y - this.y);
                         if (dist < currentCrowdRadius) {
                             neighborCount++;
                         }
                     }
                 }
-
                 this.lastNeighborCount = neighborCount;
 
                 if (neighborCount >= currentCrowdLimit) {
@@ -660,7 +667,6 @@
                 }
 
                 this.decayAccumulator += simDt * 1.0;
-
                 const decayIntervalMs = parseFloat(decayIntervalSlider.value) * 1000;
                 if (this.decayAccumulator >= decayIntervalMs) {
                     this.hp -= 1;
@@ -670,7 +676,6 @@
 
             draw(isHighlighted) {
                 ctx.save();
-
                 const baseColorStr = getCreatureColorString(this.genes);
 
                 if (isHighlighted) {
@@ -685,16 +690,12 @@
                 }
 
                 const invincible = this.isInvincible();
-                if (invincible) {
-                    ctx.globalAlpha = 0.4; 
-                }
+                if (invincible) ctx.globalAlpha = 0.4; 
 
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                
                 ctx.fillStyle = baseColorStr;
                 ctx.fill();
-                
                 ctx.strokeStyle = invincible ? '#f1c40f' : '#fff';
                 ctx.lineWidth = invincible ? 1.5 : 1;
                 ctx.stroke();
@@ -704,7 +705,6 @@
                 ctx.font = '10px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(Math.round(this.hp), this.x, this.y - this.radius - 4);
-
                 ctx.restore(); 
             }
 
@@ -712,18 +712,14 @@
                 const rand = Math.random();
                 let cumulative = 0;
                 for (let i = 0; i < hands.length; i++) {
-                    const h = hands[i];
-                    cumulative += (this.genes[h.id] || 0);
-                    if (rand < cumulative) {
-                        return h.id;
-                    }
+                    cumulative += (this.genes[hands[i].id] || 0);
+                    if (rand < cumulative) return hands[i].id;
                 }
                 return hands[hands.length - 1].id;
             }
 
             mutate(mutationAmount) {
                 if (hands.length < 2) return;
-
                 const activeHandIds = hands.map(h => h.id);
                 const loseAttr = activeHandIds[Math.floor(Math.random() * activeHandIds.length)];
                 let gainAttr;
@@ -740,9 +736,7 @@
 
                 let sum = 0;
                 activeHandIds.forEach(id => sum += (this.genes[id] || 0));
-                if (sum > 0) {
-                    activeHandIds.forEach(id => this.genes[id] = (this.genes[id] || 0) / sum);
-                }
+                if (sum > 0) activeHandIds.forEach(id => this.genes[id] = (this.genes[id] || 0) / sum);
             }
         }
 
@@ -784,27 +778,21 @@
             });
 
             document.querySelectorAll('.delete-hand-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
+                btn.addEventListener('click', () => {
                     if (hands.length <= 3) {
-                        alert("じゃんけん（すくみ）が破綻しないよう、手は最低3つ必要です！");
+                        alert("すくみが破綻しないよう、手は最低3つ必要です！");
                         return;
                     }
                     const targetId = btn.dataset.id;
-                    
                     hands = hands.filter(h => h.id !== targetId);
-                    hands.forEach(h => {
-                        h.beats = h.beats.filter(id => id !== targetId);
-                    });
+                    hands.forEach(h => h.beats = h.beats.filter(id => id !== targetId));
 
                     creatures.forEach(c => {
                         delete c.genes[targetId];
                         let sum = 0;
                         hands.forEach(h => sum += (c.genes[h.id] || 0));
-                        if (sum > 0) {
-                            hands.forEach(h => c.genes[h.id] = (c.genes[h.id] || 0) / sum);
-                        } else {
-                            hands.forEach(h => c.genes[h.id] = 1 / hands.length);
-                        }
+                        if (sum > 0) hands.forEach(h => c.genes[h.id] = (c.genes[h.id] || 0) / sum);
+                        else hands.forEach(h => c.genes[h.id] = 1 / hands.length);
                     });
 
                     lastSelectedCreatureId = null; 
@@ -821,7 +809,6 @@
                 const el = document.getElementById(`weight_${h.id}`);
                 currentValues[h.id] = el ? el.value : 50; 
             });
-
             dynamicSlidersContainer.innerHTML = '';
 
             hands.forEach(h => {
@@ -829,7 +816,6 @@
                 const group = document.createElement('div');
                 group.className = 'slider-group';
                 group.style.width = '100%';
-                
                 group.innerHTML = `
                     <label style="color: ${h.color};">${h.name} 初期比率</label>
                     <div class="input-row">
@@ -841,28 +827,11 @@
 
                 const slider = document.getElementById(`weight_${h.id}`);
                 const num = document.getElementById(`num_${h.id}`);
-
-                slider.addEventListener('input', () => {
-                    num.value = slider.value;
-                });
-
+                slider.addEventListener('input', () => num.value = slider.value);
                 num.addEventListener('input', () => {
                     let v = parseFloat(num.value);
                     if (isNaN(v)) return;
-                    if (v < 0) v = 0;
-                    if (v > 100) v = 100;
-                    slider.value = v;
-                });
-
-                num.addEventListener('blur', () => {
-                    if (num.value === '' || isNaN(parseFloat(num.value))) {
-                        num.value = slider.value;
-                    } else {
-                        let v = parseFloat(num.value);
-                        if (v < 0) v = 0;
-                        if (v > 100) v = 100;
-                        num.value = v;
-                    }
+                    slider.value = Math.max(0, Math.min(100, v));
                 });
             });
         }
@@ -876,22 +845,13 @@
                 weights[h.id] = val;
                 sum += val;
             });
-
-            if (sum === 0) {
-                hands.forEach(h => weights[h.id] = 1 / hands.length);
-            } else {
-                hands.forEach(h => weights[h.id] /= sum);
-            }
+            if (sum === 0) hands.forEach(h => weights[h.id] = 1 / hands.length);
+            else hands.forEach(h => weights[h.id] /= sum);
             return weights;
         }
 
         function populateRelationshipInputs() {
             beatsCheckboxes.innerHTML = '';
-            if (hands.length === 0) {
-                beatsCheckboxes.innerHTML = '<div style="color:#888; font-size:11px; text-align:center;">既存の手がありません</div>';
-                return;
-            }
-
             hands.forEach(h => {
                 const row = document.createElement('div');
                 row.style.display = 'flex';
@@ -901,22 +861,15 @@
                 row.style.padding = '4px 6px';
                 row.style.borderRadius = '4px';
                 row.style.marginBottom = '2px';
-
                 row.innerHTML = `
                     <div style="display: flex; align-items: center; gap: 4px; width: 80px; min-width: 80px;">
                         <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${h.color}; flex-shrink:0;"></span>
                         <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:bold; font-size:11px;" title="${h.name}">${h.name}</span>
                     </div>
                     <div style="display: flex; gap: 6px;">
-                        <label style="display:flex; align-items:center; gap:1px; cursor:pointer; color:#2ecc71; font-size:10px;">
-                            <input type="radio" name="rel_${h.id}" value="win" style="margin:0; width:12px; height:12px;">勝
-                        </label>
-                        <label style="display:flex; align-items:center; gap:1px; cursor:pointer; color:#e74c3c; font-size:10px;">
-                            <input type="radio" name="rel_${h.id}" value="lose" style="margin:0; width:12px; height:12px;">負
-                        </label>
-                        <label style="display:flex; align-items:center; gap:1px; cursor:pointer; color:#aaa; font-size:10px;">
-                            <input type="radio" name="rel_${h.id}" value="draw" checked style="margin:0; width:12px; height:12px;">引分
-                        </label>
+                        <label style="display:flex; align-items:center; gap:1px; cursor:pointer; color:#2ecc71; font-size:10px;"><input type="radio" name="rel_${h.id}" value="win" style="margin:0;">勝</label>
+                        <label style="display:flex; align-items:center; gap:1px; cursor:pointer; color:#e74c3c; font-size:10px;"><input type="radio" name="rel_${h.id}" value="lose" style="margin:0;">負</label>
+                        <label style="display:flex; align-items:center; gap:1px; cursor:pointer; color:#aaa; font-size:10px;"><input type="radio" name="rel_${h.id}" value="draw" checked style="margin:0;">分</label>
                     </div>
                 `;
                 beatsCheckboxes.appendChild(row);
@@ -926,11 +879,7 @@
         submitAddHandBtn.addEventListener('click', () => {
             const name = newHandName.value.trim();
             const color = newHandColor.value;
-
-            if (!name) {
-                alert('手の名前を入力してください！');
-                return;
-            }
+            if (!name) return;
 
             const newId = 'hand_' + Date.now();
             const beats = [];
@@ -938,42 +887,22 @@
             hands.forEach(h => {
                 const radio = document.querySelector(`input[name="rel_${h.id}"]:checked`);
                 if (radio) {
-                    const relation = radio.value;
-                    if (relation === 'win') {
-                        beats.push(h.id);
-                    } else if (relation === 'lose') {
-                        h.beats.push(newId);
-                    }
+                    if (radio.value === 'win') beats.push(h.id);
+                    else if (radio.value === 'lose') h.beats.push(newId);
                 }
             });
 
-            hands.push({
-                id: newId,
-                name: name,
-                color: color,
-                beats: beats
-            });
-
-            creatures.forEach(c => {
-                c.genes[newId] = 0;
-            });
-
+            hands.push({ id: newId, name: name, color: color, beats: beats });
+            creatures.forEach(c => c.genes[newId] = 0);
             newHandName.value = '';
             addHandForm.style.display = 'none';
-
             lastSelectedCreatureId = null; 
             renderHandList();
             renderDynamicSliders();
         });
 
-        showAddHandFormBtn.addEventListener('click', () => {
-            populateRelationshipInputs();
-            addHandForm.style.display = 'flex';
-        });
-
-        closeAddHandFormBtn.addEventListener('click', () => {
-            addHandForm.style.display = 'none';
-        });
+        showAddHandFormBtn.addEventListener('click', () => { populateRelationshipInputs(); addHandForm.style.display = 'flex'; });
+        closeAddHandFormBtn.addEventListener('click', () => addHandForm.style.display = 'none');
 
         const inputPairs = [
             { slider: document.getElementById('decayInterval'), num: document.getElementById('decayNum') },
@@ -982,35 +911,12 @@
             { slider: document.getElementById('crowdRadius'), num: document.getElementById('crowdRadiusNum') },
             { slider: document.getElementById('crowdLimit'), num: document.getElementById('crowdLimitNum') }
         ];
-
         inputPairs.forEach(pair => {
-            pair.slider.addEventListener('input', () => {
-                pair.num.value = pair.slider.value;
-            });
-            pair.num.addEventListener('input', () => {
-                let val = parseFloat(pair.num.value);
-                const min = parseFloat(pair.slider.min);
-                const max = parseFloat(pair.slider.max);
-                if (isNaN(val)) return;
-                if (val < min) val = min;
-                if (val > max) val = max;
-                pair.slider.value = val;
-            });
-            pair.num.addEventListener('blur', () => {
-                if (pair.num.value === '' || isNaN(parseFloat(pair.num.value))) {
-                    pair.num.value = pair.slider.value;
-                } else {
-                    let val = parseFloat(pair.num.value);
-                    const min = parseFloat(pair.slider.min);
-                    const max = parseFloat(pair.slider.max);
-                    if (val < min) val = min;
-                    if (val > max) val = max;
-                    pair.num.value = val;
-                }
-            });
+            pair.slider.addEventListener('input', () => pair.num.value = pair.slider.value);
+            pair.num.addEventListener('input', () => pair.slider.value = pair.num.value);
         });
 
-        const speedBtns = document.querySelectorAll('.speed-btn');
+        const speedBtns = document.querySelectorAll('.speed-btn[data-speed]');
         speedBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 speedBtns.forEach(b => b.classList.remove('active'));
@@ -1023,136 +929,72 @@
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-
             let closestDist = 20; 
             let clickedCreature = null;
 
             for (let i = 0; i < creatures.length; i++) {
                 const c = creatures[i];
                 const dist = Math.hypot(c.x - x, c.y - y);
-                if (dist < closestDist) {
-                    closestDist = dist;
-                    clickedCreature = c;
-                }
+                if (dist < closestDist) { closestDist = dist; clickedCreature = c; }
             }
 
-            if (clickedCreature) {
-                selectedCreature = clickedCreature;
-            } else {
-                if (selectedCreature) {
-                    selectedCreature = null;
-                } else {
+            if (clickedCreature) { selectedCreature = clickedCreature; }
+            else {
+                if (selectedCreature) { selectedCreature = null; }
+                else {
                     const initGenes = getInitialGenes();
                     const familyId = `家系 #${++familyCounter}`;
-                    const baseColor = getCreatureColorString(initGenes);
-                    
-                    // 家系図レジストリに始祖ノードを登録
-                    lineageRegistry[familyId] = {
-                        id: familyId,
-                        parentId: null,
-                        label: familyId,
-                        color: baseColor
-                    };
-
+                    lineageRegistry[familyId] = { id: familyId, parentId: null, label: familyId, color: getCreatureColorString(initGenes) };
                     creatures.push(new Creature(x, y, initGenes, familyId, familyId));
-                    countBadge.textContent = creatures.length;
                 }
             }
         });
 
         document.getElementById('statusPanel').addEventListener('click', (e) => {
-            if (e.target && e.target.id === 'boostBtn') {
-                if (!selectedCreature) return;
-                
+            if (e.target && e.target.id === 'boostBtn' && selectedCreature) {
                 const c = selectedCreature;
                 const angle = Math.random() * Math.PI * 2;
-                const offset = c.radius * 1.5; 
-                let cloneX = c.x + Math.cos(angle) * offset;
-                let cloneY = c.y + Math.sin(angle) * offset;
-
-                cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
-                cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
-
-                const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.lineageId);
-                
-                creatures.push(clone);
-                countBadge.textContent = creatures.length;
+                let cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, c.x + Math.cos(angle) * c.radius * 1.5));
+                let cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, c.y + Math.sin(angle) * c.radius * 1.5));
+                creatures.push(new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.lineageId));
             }
         });
 
         clearBtn.addEventListener('click', () => {
-            creatures = [];
-            countBadge.textContent = 0;
-            selectedCreature = null; 
-            lastSelectedCreatureId = null;
-            familyCounter = 0;
-            creatureIdCounter = 0;
-            lineageRegistry = {}; // 家系図レジストリもクリア
+            creatures = []; selectedCreature = null; lastSelectedCreatureId = null; familyCounter = 0; creatureIdCounter = 0; lineageRegistry = {};
         });
 
         function playJanken(handId1, handId2) {
             if (handId1 === handId2) return 0;
-            
             const h1 = hands.find(h => h.id === handId1);
+            if (h1 && h1.beats.includes(handId2)) return 1;
             const h2 = hands.find(h => h.id === handId2);
-            if (!h1 || !h2) return 0;
-
-            if (h1.beats.includes(handId2)) return 1;
-            if (h2.beats.includes(handId1)) return -1;
-            
+            if (h2 && h2.beats.includes(handId1)) return -1;
             return 0; 
         }
 
         function handleCollisions() {
             for (let i = 0; i < creatures.length; i++) {
                 for (let j = i + 1; j < creatures.length; j++) {
-                    const c1 = creatures[i];
-                    const c2 = creatures[j];
-
+                    const c1 = creatures[i]; const c2 = creatures[j];
                     if (c1.isInvincible() || c2.isInvincible()) continue;
 
-                    const dx = c2.x - c1.x;
-                    const dy = c2.y - c1.y;
-                    const distance = Math.hypot(dx, dy);
-                    const minDist = c1.radius + c2.radius;
+                    const dx = c2.x - c1.x; const dy = c2.y - c1.y;
+                    const distance = Math.hypot(dx, dy); const minDist = c1.radius + c2.radius;
 
                     if (distance < minDist) {
-                        const nx = dx / distance;
-                        const ny = dy / distance;
-                        const rvx = c2.vx - c1.vx;
-                        const rvy = c2.vy - c1.vy;
-                        const velAlongNormal = rvx * nx + rvy * ny;
-
-                        if (velAlongNormal < 0) {
-                            const restitution = 1.0;
-                            let jImpulse = -(1 + restitution) * velAlongNormal;
-                            jImpulse /= (2);
-
-                            const impulseX = jImpulse * nx;
-                            const impulseY = jImpulse * ny;
-                            c1.vx -= impulseX;
-                            c1.vy -= impulseY;
-                            c2.vx += impulseX;
-                            c2.vy += impulseY;
+                        const nx = dx / distance; const ny = dy / distance;
+                        if (((c2.vx - c1.vx) * nx + (c2.vy - c1.vy) * ny) < 0) {
+                            const impulse = -2 * ((c2.vx - c1.vx) * nx + (c2.vy - c1.vy) * ny) / 2;
+                            c1.vx -= impulse * nx; c1.vy -= impulse * ny;
+                            c2.vx += impulse * nx; c2.vy += impulse * ny;
                         }
-
                         const overlap = (minDist - distance) / 2;
-                        c1.x -= nx * overlap;
-                        c1.y -= ny * overlap;
-                        c2.x += nx * overlap;
-                        c2.y += ny * overlap;
+                        c1.x -= nx * overlap; c1.y -= ny * overlap; c2.x += nx * overlap; c2.y += ny * overlap;
 
-                        const hand1 = c1.decideHand();
-                        const hand2 = c2.decideHand();
-                        const result = playJanken(hand1, hand2);
-
-                        if (result === 1) {
-                            c1.hp += 1;
-                            c2.hp -= 1;
-                        } else if (result === -1) {
-                            c2.hp += 1;
-                            c1.hp -= 1;
-                        }
+                        const result = playJanken(c1.decideHand(), c2.decideHand());
+                        if (result === 1) { c1.hp += 1; c2.hp -= 1; }
+                        else if (result === -1) { c2.hp += 1; c1.hp -= 1; }
                     }
                 }
             }
@@ -1161,11 +1003,7 @@
         function updateStatusPanel() {
             if (!selectedCreature) {
                 if (lastSelectedCreatureId !== null) {
-                    statusContent.innerHTML = `
-                        <div class="status-placeholder">
-                            生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の一族全員が<br>ぼんなり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
-                        </div>
-                    `;
+                    statusContent.innerHTML = `<div class="status-placeholder">生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の一族全員が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。</div>`;
                     lastSelectedCreatureId = null;
                 }
                 return;
@@ -1176,186 +1014,116 @@
 
             if (lastSelectedCreatureId !== c.id) {
                 lastSelectedCreatureId = c.id;
-
                 let geneBarsHtml = '';
                 hands.forEach(h => {
                     geneBarsHtml += `
-                        <div class="gene-label" style="display: flex; justify-content: space-between; margin-top: 5px;">
-                            <span>${h.name}</span><span id="status_pct_${h.id}">0%</span>
-                        </div>
-                        <div class="gene-bar">
-                            <div class="gene-fill" id="status_bar_${h.id}" style="width: 0%;"></div>
-                        </div>
-                    `;
+                        <div class="gene-label" style="display: flex; justify-content: space-between; margin-top: 5px;"><span>${h.name}</span><span id="status_pct_${h.id}">0%</span></div>
+                        <div class="gene-bar"><div class="gene-fill" id="status_bar_${h.id}" style="width: 0%;"></div></div>`;
                 });
 
                 statusContent.innerHTML = `
-                    <div class="status-item" style="margin-top: 10px;">
-                        <span>所属ルーツ:</span>
-                        <span id="status_family" style="color: #f1c40f;"></span>
-                    </div>
-                    <div class="status-item">
-                        <span>現在体力 (HP):</span>
-                        <span id="status_hp" style="color: #2ecc71;"></span>
-                    </div>
-                    <div class="status-item">
-                        <span>周囲の他個体 (<span id="status_radius_val"></span>px内):</span>
-                        <span id="status_neighbors"></span>
-                    </div>
-                    <div class="status-item">
-                        <span>過密状態チェック:</span>
-                        <span id="status_crowd_check"></span>
-                    </div>
-                    
-                    <!-- 子孫作製ボタン -->
+                    <div class="status-item" style="margin-top: 10px;"><span>所属ルーツ:</span><span id="status_family" style="color: #f1c40f;"></span></div>
+                    <div class="status-item"><span>現在体力 (HP):</span><span id="status_hp" style="color: #2ecc71;"></span></div>
+                    <div class="status-item"><span>周囲の他個体 (<span id="status_radius_val"></span>px内):</span><span id="status_neighbors"></span></div>
+                    <div class="status-item"><span>過密状態チェック:</span><span id="status_crowd_check"></span></div>
                     <button id="boostBtn">⚡ この個体の子孫を作製 (ブースト)</button>
-                    
-                    <div class="gene-bar-container">
-                        <span class="gene-label" style="position: sticky; top: 0; background: #2c2c2c; padding-bottom: 4px; display: block; z-index: 5;">🧬 遺伝子比率 (動的ブレンド)</span>
-                        <div id="status_gene_list">${geneBarsHtml}</div>
-                    </div>
-                `;
+                    <div class="gene-bar-container"><span class="gene-label" style="position: sticky; top: 0; background: #2c2c2c; padding-bottom: 4px; display: block; z-index: 5;">🧬 遺伝子比率</span><div id="status_gene_list">${geneBarsHtml}</div></div>`;
             }
 
             document.getElementById('status_family').textContent = c.familyId;
             document.getElementById('status_hp').textContent = `${Math.round(c.hp)} / 15`;
             document.getElementById('status_radius_val').textContent = Math.round(currentCrowdRadius);
-            
-            const elNeighbors = document.getElementById('status_neighbors');
-            elNeighbors.textContent = `${c.lastNeighborCount} / ${currentCrowdLimit} 体`;
-            elNeighbors.style.color = isOverCrowded ? '#e74c3c' : '#fff';
-
-            const elCrowdCheck = document.getElementById('status_crowd_check');
-            elCrowdCheck.textContent = isOverCrowded ? '❌ 過密 (即死判定)' : '🟢 安全';
-            elCrowdCheck.style.color = isOverCrowded ? '#e74c3c' : '#2ecc71';
+            document.getElementById('status_neighbors').textContent = `${c.lastNeighborCount} / ${currentCrowdLimit} 体`;
+            document.getElementById('status_neighbors').style.color = isOverCrowded ? '#e74c3c' : '#fff';
+            document.getElementById('status_crowd_check').textContent = isOverCrowded ? '❌ 過密 (即死判定)' : '🟢 安全';
+            document.getElementById('status_crowd_check').style.color = isOverCrowded ? '#e74c3c' : '#2ecc71';
 
             hands.forEach(h => {
                 const percent = Math.round((c.genes[h.id] || 0) * 100);
-                const elPct = document.getElementById(`status_pct_${h.id}`);
-                const elBar = document.getElementById(`status_bar_${h.id}`);
-                if (elPct) elPct.textContent = `${percent}%`;
-                if (elBar) {
-                    elBar.style.width = `${percent}%`;
-                    elBar.style.backgroundColor = h.color;
+                if (document.getElementById(`status_pct_${h.id}`)) document.getElementById(`status_pct_${h.id}`).textContent = `${percent}%`;
+                if (document.getElementById(`status_bar_${h.id}`)) {
+                    document.getElementById(`status_bar_${h.id}`).style.width = `${percent}%`;
+                    document.getElementById(`status_bar_${h.id}`).style.backgroundColor = h.color;
                 }
             });
         }
 
-        // 【新設】全体の系統樹・家系図を描画する関数
+        // 全体の系統樹を描画する関数
         function updateLineagePanel() {
-            // 1. 各系統の現在生存数を集計
-            const counts = {};
-            creatures.forEach(c => {
-                counts[c.lineageId] = (counts[c.lineageId] || 0) + 1;
-            });
+            if (lineagePanel.style.display === 'none') return; // 非表示時はスキップ
 
-            // 2. 生存個体がいる系統、およびその「祖先ノード」を遡ってアクティブとして記憶
+            const counts = {};
+            creatures.forEach(c => counts[c.lineageId] = (counts[c.lineageId] || 0) + 1);
+
             const activeNodes = new Set();
             Object.keys(counts).forEach(lid => {
                 let currentId = lid;
                 while (currentId) {
                     activeNodes.add(currentId);
-                    const node = lineageRegistry[currentId];
-                    currentId = node ? node.parentId : null;
+                    currentId = lineageRegistry[currentId] ? lineageRegistry[currentId].parentId : null;
                 }
             });
 
-            // 大元のルート（parentId が null かつ、生存者またはその子孫が生き残っているノード）を抽出
             const roots = Object.values(lineageRegistry).filter(node => node.parentId === null && activeNodes.has(node.id));
 
             if (roots.length === 0) {
-                lineageContent.innerHTML = `
-                    <div class="status-placeholder">
-                        画面をクリックして<br>生き物を配置すると<br>ここに系統樹（家系図）が<br>リアルタイムに形成されます。
-                    </div>
-                `;
+                lineageContent.innerHTML = `<div class="status-placeholder">画面をクリックして<br>生き物を配置すると<br>ここに系統樹（家系図）が<br>リアルタイムに形成されます。</div>`;
                 return;
             }
 
-            // 3. ルートから再帰的にHTMLツリー構造を組み立てる
             let html = '';
             roots.forEach(root => {
                 const aliveCount = counts[root.id] || 0;
-                
-                // 画面で個体が選択されている時、家系図内でもそのノード（または一族）をライトアップさせる
-                const isSelected = selectedCreature && (
-                    getSelectedHighlightMode() === 'pureLineage' ? (root.id === selectedCreature.lineageId) : (root.id.split('-')[0] === selectedCreature.familyId)
-                );
+                const isSelected = selectedCreature && (getSelectedHighlightMode() === 'pureLineage' ? (root.id === selectedCreature.lineageId) : (root.id.split('-')[0] === selectedCreature.familyId));
                 const labelStyle = isSelected ? 'color: #f1c40f; font-weight: bold; background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px;' : '';
-                
-                // 自身は絶滅しているが、子孫が生きている場合は半透明にして歴史を表す
-                const opacity = aliveCount > 0 ? '1.0' : '0.5';
-
                 html += `
-                    <div style="opacity: ${opacity}; margin-bottom: 10px;">
+                    <div style="opacity: ${aliveCount > 0 ? '1.0' : '0.5'}; margin-bottom: 10px;">
                         <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0;">
                             <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${root.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
                             <span style="${labelStyle}">${root.label} <span style="color: #aaa; font-size: 10px;">(${aliveCount}体)</span></span>
                         </div>
                         ${buildLineageTreeHtml(root.id, counts, activeNodes)}
-                    </div>
-                `;
+                    </div>`;
             });
-
             lineageContent.innerHTML = html;
         }
 
-        // 系統樹の各階層を再帰的に生成するヘルパー関数
         function buildLineageTreeHtml(parentId, counts, activeNodes) {
             const children = Object.values(lineageRegistry).filter(node => node.parentId === parentId && activeNodes.has(node.id));
             if (children.length === 0) return '';
 
-            // CSSの左ボーダー（破線）を使って、トーナメントの分岐階層線を表現
-            let html = '<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 10px; border-left: 1px dashed #666; margin-left: 4px;">';
-            
+            let html = '<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 12px; border-left: 1px dashed #666; margin-left: 4px;">';
             children.forEach(node => {
                 const aliveCount = counts[node.id] || 0;
-                const isSelected = selectedCreature && (
-                    getSelectedHighlightMode() === 'pureLineage' ? (node.id === selectedCreature.lineageId) : (node.id.split('-')[0] === selectedCreature.familyId)
-                );
+                const isSelected = selectedCreature && (getSelectedHighlightMode() === 'pureLineage' ? (node.id === selectedCreature.lineageId) : (node.id.split('-')[0] === selectedCreature.familyId));
                 const labelStyle = isSelected ? 'color: #f1c40f; font-weight: bold; background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px;' : '';
-                const opacity = aliveCount > 0 ? '1.0' : '0.5';
-
                 html += `
-                    <div style="opacity: ${opacity};">
+                    <div style="opacity: ${aliveCount > 0 ? '1.0' : '0.5'};">
                         <div style="display: flex; align-items: center; gap: 6px; margin: 2px 0;">
                             <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${node.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
                             <span style="${labelStyle}">${node.label} <span style="color: #aaa; font-size: 10px;">(${aliveCount}体)</span></span>
                         </div>
                         ${buildLineageTreeHtml(node.id, counts, activeNodes)}
-                    </div>
-                `;
+                    </div>`;
             });
-            
             html += '</div>';
             return html;
         }
 
         function loop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
             currentCrowdRadius = parseFloat(document.getElementById('crowdRadius').value) || 50;
             currentCrowdLimit = parseFloat(document.getElementById('crowdLimit').value) || 20;
 
             const nextCreatures = [];
             const simDt = 16.67 * timeScale;
 
-            if (selectedCreature && selectedCreature.hp <= 0) {
-                selectedCreature = null;
-            }
+            if (selectedCreature && selectedCreature.hp <= 0) selectedCreature = null;
 
             if (selectedCreature) {
-                ctx.save();
-                ctx.beginPath();
-                ctx.arc(selectedCreature.x, selectedCreature.y, currentCrowdRadius, 0, Math.PI * 2); 
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
-                ctx.fill();
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-                ctx.lineWidth = 1.5;
-                ctx.setLineDash([6, 4]); 
-                ctx.stroke();
-                ctx.closePath();
-                ctx.restore();
+                ctx.save(); ctx.beginPath(); ctx.arc(selectedCreature.x, selectedCreature.y, currentCrowdRadius, 0, Math.PI * 2); 
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.02)'; ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]); ctx.stroke(); ctx.restore();
             }
 
             const currentMode = getSelectedHighlightMode();
@@ -1364,69 +1132,36 @@
                 const c = creatures[i];
                 c.update(simDt, creatures);
                 
-                let isHighlighted = false;
-                if (selectedCreature) {
-                    if (currentMode === 'pureLineage') {
-                        isHighlighted = (c.lineageId === selectedCreature.lineageId);
-                    } else { 
-                        isHighlighted = (c.familyId === selectedCreature.familyId);
-                    }
-                }
+                let isHighlighted = selectedCreature && (currentMode === 'pureLineage' ? (c.lineageId === selectedCreature.lineageId) : (c.familyId === selectedCreature.familyId));
 
                 if (c.hp > 0) {
                     c.draw(isHighlighted); 
-
                     if (c.hp >= 15) {
                         c.hp -= 5; 
-
                         const angle = Math.random() * Math.PI * 2;
-                        const offset = c.radius * 1.5; 
-                        let cloneX = c.x + Math.cos(angle) * offset;
-                        let cloneY = c.y + Math.sin(angle) * offset;
-
-                        cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
-                        cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
-
+                        let cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, c.x + Math.cos(angle) * c.radius * 1.5));
+                        let cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, c.y + Math.sin(angle) * c.radius * 1.5));
                         const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.lineageId);
 
-                        const mutationRate = parseFloat(mutRateSlider.value) / 100;
-                        if (Math.random() < mutationRate) {
+                        if (Math.random() < (parseFloat(mutRateSlider.value) / 100)) {
                             const maxAmt = parseFloat(mutAmtSlider.value);
-                            const randomAmt = maxAmt > 1 ? 1 + Math.random() * (maxAmt - 1) : 1;
-                            const mutationAmount = randomAmt / 100;
-                            
-                            clone.mutate(mutationAmount); 
-                            
-                            // 突然変異が起きた場合、新しい「派生系統」として系統樹に登録
+                            clone.mutate((maxAmt > 1 ? 1 + Math.random() * (maxAmt - 1) : 1) / 100); 
                             const oldLineageId = c.lineageId;
                             clone.lineageId = `${c.lineageId}-m${clone.id}`;
-                            
-                            const childColor = getCreatureColorString(clone.genes);
-                            lineageRegistry[clone.lineageId] = {
-                                id: clone.lineageId,
-                                parentId: oldLineageId,
-                                label: `変異 #${clone.id}`,
-                                color: childColor
-                            };
+                            lineageRegistry[clone.lineageId] = { id: clone.lineageId, parentId: oldLineageId, label: `変異 #${clone.id}`, color: getCreatureColorString(clone.genes) };
                         }
-
                         nextCreatures.push(clone);
                     }
-
                     nextCreatures.push(c);
                 }
             }
 
             creatures = nextCreatures;
-
-            if (timeScale > 0) {
-                handleCollisions();
-            }
+            if (timeScale > 0) handleCollisions();
 
             countBadge.textContent = creatures.length;
-
             updateStatusPanel();
-            updateLineagePanel(); // 【新設】家系図パネルを毎フレーム更新
+            updateLineagePanel();
 
             requestAnimationFrame(loop);
         }
