@@ -493,6 +493,7 @@
 
         // 選択中の個体管理
         let selectedCreature = null;
+        let lastSelectedCreatureId = null; // パネルの再構築判定用
 
         function hexToRgb(hex) {
             let shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
@@ -830,6 +831,7 @@
                         }
                     });
 
+                    lastSelectedCreatureId = null; // 構造リセット
                     renderHandList();
                     renderDynamicSliders();
                     updateStatusPanel();
@@ -983,6 +985,7 @@
             newHandName.value = '';
             addHandForm.style.display = 'none';
 
+            lastSelectedCreatureId = null; // 構造リセット
             renderHandList();
             renderDynamicSliders();
         });
@@ -1070,7 +1073,7 @@
             }
         });
 
-        // 【新機能】ステータスパネル内のクリックイベント（ブーストボタン判定用）
+        // ステータスパネル内のクリックイベント（ブーストボタン判定）
         document.getElementById('statusPanel').addEventListener('click', (e) => {
             if (e.target && e.target.id === 'boostBtn') {
                 if (!selectedCreature) return;
@@ -1084,7 +1087,7 @@
                 cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                 cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                // 突然変異を一切起こさずに新しいクローン（子供）を生成
+                // 突然変異なしのクローン生成
                 const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.id);
                 
                 creatures.push(clone);
@@ -1096,6 +1099,7 @@
             creatures = [];
             countBadge.textContent = 0;
             selectedCreature = null; 
+            lastSelectedCreatureId = null;
             familyCounter = 0;
             creatureIdCounter = 0;
             familyGraph.clear();
@@ -1171,60 +1175,87 @@
 
         function updateStatusPanel() {
             if (!selectedCreature) {
-                statusContent.innerHTML = `
-                    <div class="status-placeholder">
-                        生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の親戚達が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
-                    </div>
-                `;
+                if (lastSelectedCreatureId !== null) {
+                    statusContent.innerHTML = `
+                        <div class="status-placeholder">
+                            生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の親戚達が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
+                        </div>
+                    `;
+                    lastSelectedCreatureId = null;
+                }
                 return;
             }
 
             const c = selectedCreature;
             const isOverCrowded = c.lastNeighborCount >= currentCrowdLimit;
-            
-            let geneBarsHtml = '';
-            hands.forEach(h => {
-                const percent = Math.round((c.genes[h.id] || 0) * 100);
-                geneBarsHtml += `
-                    <div class="gene-label" style="display: flex; justify-content: space-between; margin-top: 5px;">
-                        <span>${h.name}</span><span>${percent}%</span>
+
+            // 選択した個体が変わった時だけ、静的なHTML構造を組み立てる（ボタンやスクロールバーの消失を防ぐ）
+            if (lastSelectedCreatureId !== c.id) {
+                lastSelectedCreatureId = c.id;
+
+                let geneBarsHtml = '';
+                hands.forEach(h => {
+                    geneBarsHtml += `
+                        <div class="gene-label" style="display: flex; justify-content: space-between; margin-top: 5px;">
+                            <span>${h.name}</span><span id="status_pct_${h.id}">0%</span>
+                        </div>
+                        <div class="gene-bar">
+                            <div class="gene-fill" id="status_bar_${h.id}" style="width: 0%;"></div>
+                        </div>
+                    `;
+                });
+
+                statusContent.innerHTML = `
+                    <div class="status-item" style="margin-top: 10px;">
+                        <span>所属ルーツ:</span>
+                        <span id="status_family" style="color: #f1c40f;"></span>
                     </div>
-                    <div class="gene-bar">
-                        <div class="gene-fill" style="width: ${percent}%; background-color: ${h.color};"></div>
+                    <div class="status-item">
+                        <span>現在体力 (HP):</span>
+                        <span id="status_hp" style="color: #2ecc71;"></span>
+                    </div>
+                    <div class="status-item">
+                        <span>周囲の他個体 (<span id="status_radius_val"></span>px内):</span>
+                        <span id="status_neighbors"></span>
+                    </div>
+                    <div class="status-item">
+                        <span>過密状態チェック:</span>
+                        <span id="status_crowd_check"></span>
+                    </div>
+                    
+                    <!-- 子孫作製ボタン -->
+                    <button id="boostBtn">⚡ この個体の子孫を作製 (ブースト)</button>
+                    
+                    <div class="gene-bar-container">
+                        <span class="gene-label" style="position: sticky; top: 0; background: #2c2c2c; padding-bottom: 4px; display: block; z-index: 5;">🧬 遺伝子比率 (動的ブレンド)</span>
+                        <div id="status_gene_list">${geneBarsHtml}</div>
                     </div>
                 `;
-            });
+            }
 
-            statusContent.innerHTML = `
-                <div class="status-item" style="margin-top: 10px;">
-                    <span>所属ルーツ:</span>
-                    <span style="color: #f1c40f;">${c.familyId}</span>
-                </div>
-                <div class="status-item">
-                    <span>現在体力 (HP):</span>
-                    <span style="color: #2ecc71;">${Math.round(c.hp)} / 15</span>
-                </div>
-                <div class="status-item">
-                    <span>周囲の他個体 (${Math.round(currentCrowdRadius)}px内):</span>
-                    <span style="color: ${isOverCrowded ? '#e74c3c' : '#fff'};">
-                        ${c.lastNeighborCount} / ${currentCrowdLimit} 体
-                    </span>
-                </div>
-                <div class="status-item">
-                    <span>過密状態チェック:</span>
-                    <span style="color: ${isOverCrowded ? '#e74c3c' : '#2ecc71'};">
-                        ${isOverCrowded ? '❌ 過密 (即死判定)' : '🟢 安全'}
-                    </span>
-                </div>
-                
-                <!-- 【新機能】子孫作製ボタン -->
-                <button id="boostBtn">⚡ この個体の子孫を作製 (ブースト)</button>
-                
-                <div class="gene-bar-container">
-                    <span class="gene-label" style="position: sticky; top: 0; background: #2c2c2c; padding-bottom: 4px; display: block; z-index: 5;">🧬 遺伝子比率 (動的ブレンド)</span>
-                    ${geneBarsHtml}
-                </div>
-            `;
+            // 毎フレームの値の流し込み（DOMを破壊しないため操作に一切影響しない）
+            document.getElementById('status_family').textContent = c.familyId;
+            document.getElementById('status_hp').textContent = `${Math.round(c.hp)} / 15`;
+            document.getElementById('status_radius_val').textContent = Math.round(currentCrowdRadius);
+            
+            const elNeighbors = document.getElementById('status_neighbors');
+            elNeighbors.textContent = `${c.lastNeighborCount} / ${currentCrowdLimit} 体`;
+            elNeighbors.style.color = isOverCrowded ? '#e74c3c' : '#fff';
+
+            const elCrowdCheck = document.getElementById('status_crowd_check');
+            elCrowdCheck.textContent = isOverCrowded ? '❌ 過密 (即死判定)' : '🟢 安全';
+            elCrowdCheck.style.color = isOverCrowded ? '#e74c3c' : '#2ecc71';
+
+            hands.forEach(h => {
+                const percent = Math.round((c.genes[h.id] || 0) * 100);
+                const elPct = document.getElementById(`status_pct_${h.id}`);
+                const elBar = document.getElementById(`status_bar_${h.id}`);
+                if (elPct) elPct.textContent = `${percent}%`;
+                if (elBar) {
+                    elBar.style.width = `${percent}%`;
+                    elBar.style.backgroundColor = h.color;
+                }
+            });
         }
 
         let frameCount = 0;
