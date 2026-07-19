@@ -85,12 +85,13 @@
         }
         .radio-group {
             display: flex;
-            gap: 12px;
+            flex-direction: column;
+            gap: 6px;
         }
         .radio-label {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             cursor: pointer;
             user-select: none;
             color: #ccc;
@@ -418,12 +419,12 @@
             <div id="statusPanel">
                 <h3>🧬 個体ステータス</h3>
                 
-                <!-- 親戚ハイライトのトグル設定 -->
+                <!-- 系統ハイライトのトグル設定 -->
                 <div id="highlightConfig">
                     <div class="highlight-title">💡 ハイライト対象</div>
                     <div class="radio-group">
                         <label class="radio-label">
-                            <input type="radio" name="highlightMode" value="5degrees" checked> 5親等以内
+                            <input type="radio" name="highlightMode" value="pureLineage" checked> 突然変異していない範囲の一族全員
                         </label>
                         <label class="radio-label">
                             <input type="radio" name="highlightMode" value="all"> 一族全員
@@ -433,7 +434,7 @@
 
                 <div id="statusContent">
                     <div class="status-placeholder">
-                        生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の親戚達が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
+                        生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の一族全員が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
                     </div>
                 </div>
             </div>
@@ -489,8 +490,6 @@
         let familyCounter = 0;
         let creatureIdCounter = 0;
 
-        const familyGraph = new Map();
-
         // 選択中の個体管理
         let selectedCreature = null;
         let lastSelectedCreatureId = null; // パネルの再構築判定用
@@ -509,7 +508,7 @@
         }
 
         class Creature {
-            constructor(x, y, genes, familyId, parentId = null) {
+            constructor(x, y, genes, familyId = null, lineageId = null) {
                 this.id = ++creatureIdCounter;
                 
                 this.x = x;
@@ -539,13 +538,10 @@
                 this.simulatedAge = 0;       
                 this.decayAccumulator = 0; 
 
+                // familyId: ルーツとなる大元の家系ID
                 this.familyId = familyId || `家系 #${++familyCounter}`;
-
-                familyGraph.set(this.id, new Set());
-                if (parentId && familyGraph.has(parentId)) {
-                    familyGraph.get(parentId).add(this.id);
-                    familyGraph.get(this.id).add(parentId);
-                }
+                // lineageId: 突然変異が起きるたびに分岐していく詳細な系統ID
+                this.lineageId = lineageId || this.familyId;
 
                 this.lastNeighborCount = 0;
             }
@@ -570,7 +566,6 @@
                     this.y = this.radius;
                     this.vy *= -1;
                 }
-                // 【修正箇所】下枠に衝突した時、vx ではなくちゃんと縦方向の vy を反転させるように修正
                 if (this.y + this.radius > canvas.height) {
                     this.y = canvas.height - this.radius;
                     this.vy *= -1; 
@@ -714,75 +709,7 @@
             for (const r of highlightRadios) {
                 if (r.checked) return r.value;
             }
-            return '5degrees';
-        }
-
-        function getRelativesWithin5Degrees(startId) {
-            const relatives = new Set();
-            const queue = [{ id: startId, dist: 0 }];
-            const visited = new Set();
-            visited.add(startId);
-
-            while (queue.length > 0) {
-                const { id, dist } = queue.shift();
-                relatives.add(id);
-
-                if (dist < 5) {
-                    const neighbors = familyGraph.get(id);
-                    if (neighbors) {
-                        for (const neighborId of neighbors) {
-                            if (!visited.has(neighborId)) {
-                                visited.add(neighborId);
-                                queue.push({ id: neighborId, dist: dist + 1 });
-                            }
-                        }
-                    }
-                }
-            }
-            return relatives;
-        }
-
-        function cleanUpFamilyGraph() {
-            const activeIds = new Set();
-            const visited = new Set();
-
-            for (let i = 0; i < creatures.length; i++) {
-                const startId = creatures[i].id;
-                if (visited.has(startId)) continue;
-
-                const queue = [{ id: startId, dist: 0 }];
-                visited.add(startId);
-
-                while (queue.length > 0) {
-                    const { id, dist } = queue.shift();
-                    activeIds.add(id);
-
-                    if (dist < 5) {
-                        const neighbors = familyGraph.get(id);
-                        if (neighbors) {
-                            for (const neighborId of neighbors) {
-                                if (!visited.has(neighborId)) {
-                                    visited.add(neighborId);
-                                    queue.push({ id: neighborId, dist: dist + 1 });
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            for (const id of familyGraph.keys()) {
-                if (!activeIds.has(id)) {
-                    familyGraph.delete(id);
-                } else {
-                    const neighbors = familyGraph.get(id);
-                    for (const neighborId of neighbors) {
-                        if (!activeIds.has(neighborId)) {
-                            neighbors.delete(neighborId);
-                        }
-                    }
-                }
-            }
+            return 'pureLineage';
         }
 
         function renderHandList() {
@@ -1092,7 +1019,8 @@
                 cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                 cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.id);
+                // コピー（ブースト）時は突然変異は伴わないため、同一系統(lineageId)として生成
+                const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.lineageId);
                 
                 creatures.push(clone);
                 countBadge.textContent = creatures.length;
@@ -1106,7 +1034,6 @@
             lastSelectedCreatureId = null;
             familyCounter = 0;
             creatureIdCounter = 0;
-            familyGraph.clear();
         });
 
         function playJanken(handId1, handId2) {
@@ -1182,7 +1109,7 @@
                 if (lastSelectedCreatureId !== null) {
                     statusContent.innerHTML = `
                         <div class="status-placeholder">
-                            生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の親戚達が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
+                            生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の一族全員が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
                         </div>
                     `;
                     lastSelectedCreatureId = null;
@@ -1260,8 +1187,6 @@
             });
         }
 
-        let frameCount = 0;
-
         function loop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -1270,11 +1195,6 @@
 
             const nextCreatures = [];
             const simDt = 16.67 * timeScale;
-            frameCount++;
-
-            if (frameCount % 180 === 0) {
-                cleanUpFamilyGraph();
-            }
 
             if (selectedCreature && selectedCreature.hp <= 0) {
                 selectedCreature = null;
@@ -1295,11 +1215,6 @@
             }
 
             const currentMode = getSelectedHighlightMode();
-            let relativeIds = new Set();
-            
-            if (selectedCreature && currentMode === '5degrees') {
-                relativeIds = getRelativesWithin5Degrees(selectedCreature.id);
-            }
 
             for (let i = 0; i < creatures.length; i++) {
                 const c = creatures[i];
@@ -1307,9 +1222,11 @@
                 
                 let isHighlighted = false;
                 if (selectedCreature) {
-                    if (currentMode === '5degrees') {
-                        isHighlighted = relativeIds.has(c.id);
+                    if (currentMode === 'pureLineage') {
+                        // 【変更】突然変異していない範囲の一族全員（同じ詳細系統IDの個体のみ）
+                        isHighlighted = (c.lineageId === selectedCreature.lineageId);
                     } else { 
+                        // 一族全員（同じ家系ID）
                         isHighlighted = (c.familyId === selectedCreature.familyId);
                     }
                 }
@@ -1328,7 +1245,8 @@
                         cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                         cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                        const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.id);
+                        // 初期生成時は親の家系ID、系統IDをそのまま継承
+                        const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.lineageId);
 
                         const mutationRate = parseFloat(mutRateSlider.value) / 100;
                         if (Math.random() < mutationRate) {
@@ -1337,6 +1255,9 @@
                             const mutationAmount = randomAmt / 100;
                             
                             clone.mutate(mutationAmount); 
+                            
+                            // 突然変異が起きた場合、新しい「派生系統」として系統IDを更新
+                            clone.lineageId = `${c.lineageId}-m${clone.id}`;
                         }
 
                         nextCreatures.push(clone);
