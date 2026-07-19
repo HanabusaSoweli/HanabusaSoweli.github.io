@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (カスタムハンド版)</title>
+    <title>じゃんけん生態系シミュレーター (カスタムハンド＆系統樹版)</title>
     <style>
         body {
             margin: 0;
@@ -23,7 +23,7 @@
             align-items: center;
             gap: 10px;
             width: 95%;
-            max-width: 1100px;
+            max-width: 1400px; /* 家系図パネル追加に伴い横幅を拡張 */
         }
         
         /* 左右レイアウト用ラッパー */
@@ -42,9 +42,9 @@
             cursor: crosshair;
         }
 
-        /* 右側：ステータスパネル */
+        /* 中央：ステータスパネル */
         #statusPanel {
-            width: 260px;
+            width: 250px;
             height: 480px; /* Canvasの縦幅と一致させて固定 */
             background-color: #2c2c2c;
             border: 2px solid #555;
@@ -63,6 +63,35 @@
             color: #f1c40f;
             font-size: 15px;
             text-align: center;
+        }
+
+        /* 【新設】右側：種の家系図パネル */
+        #lineagePanel {
+            width: 280px;
+            height: 480px;
+            background-color: #2c2c2c;
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 15px;
+            box-sizing: border-box;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        #lineagePanel h3 {
+            margin: 0 0 5px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #555;
+            color: #f1c40f;
+            font-size: 15px;
+            text-align: center;
+        }
+        #lineageContent {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            padding-right: 4px;
         }
         
         /* ハイライト切り替え用のUI */
@@ -147,7 +176,7 @@
             flex-direction: column;
             gap: 10px;
             flex: 1;
-            min-height: 0; /* 子要素の縮小・スクロールを正常に機能させる */
+            min-height: 0; 
         }
 
         /* 遺伝子バーのビジュアル */
@@ -313,7 +342,7 @@
 <body>
 
     <div id="container">
-        <h2 style="margin: 0;">じゃんけん生態系シミュレーター (カスタムハンド版)</h2>
+        <h2 style="margin: 0;">じゃんけん生態系シミュレーター (カスタムハンド＆系統樹版)</h2>
         
         <!-- コントロールパネル -->
         <div id="controls">
@@ -416,6 +445,7 @@
         <div id="main-area">
             <canvas id="simCanvas" width="800" height="480"></canvas>
             
+            <!-- 中央：詳細パネル -->
             <div id="statusPanel">
                 <h3>🧬 個体ステータス</h3>
                 
@@ -435,6 +465,16 @@
                 <div id="statusContent">
                     <div class="status-placeholder">
                         生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の一族全員が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
+                    </div>
+                </div>
+            </div>
+
+            <!-- 【新設】右側：全体の種の家系図パネル -->
+            <div id="lineagePanel">
+                <h3>🌳 種の家系図 (系統樹)</h3>
+                <div id="lineageContent">
+                    <div class="status-placeholder">
+                        画面をクリックして<br>生き物を配置すると<br>ここに系統樹（家系図）が<br>リアルタイムに形成されます。
                     </div>
                 </div>
             </div>
@@ -459,6 +499,7 @@
         const mutAmtSlider = document.getElementById('mutAmt');
         
         const statusContent = document.getElementById('statusContent');
+        const lineageContent = document.getElementById('lineageContent');
         const highlightRadios = document.getElementsByName('highlightMode');
 
         // 手の追加フォーム関連UI
@@ -490,6 +531,9 @@
         let familyCounter = 0;
         let creatureIdCounter = 0;
 
+        // 【新設】家系図データを追跡・記憶するレジストリ
+        let lineageRegistry = {};
+
         // 選択中の個体管理
         let selectedCreature = null;
         let lastSelectedCreatureId = null; // パネルの再構築判定用
@@ -505,6 +549,24 @@
                 g: parseInt(result[2], 16),
                 b: parseInt(result[3], 16)
             } : { r: 255, g: 255, b: 255 };
+        }
+
+        // 個体の現在遺伝子からブレンドされたRGBカラー文字列を取得する共通関数
+        function getCreatureColorString(genes) {
+            let rSum = 0, gSum = 0, bSum = 0;
+            let totalWeight = 0;
+
+            hands.forEach(h => {
+                const weight = genes[h.id] || 0;
+                const rgb = hexToRgb(h.color);
+                rSum += rgb.r * weight;
+                gSum += rgb.g * weight;
+                bSum += rgb.b * weight;
+                totalWeight += weight;
+            });
+
+            if (totalWeight === 0) return 'rgb(255, 255, 255)';
+            return `rgb(${Math.floor(rSum)}, ${Math.floor(gSum)}, ${Math.floor(bSum)})`;
         }
 
         class Creature {
@@ -609,31 +671,12 @@
             draw(isHighlighted) {
                 ctx.save();
 
-                let rSum = 0, gSum = 0, bSum = 0;
-                let totalWeight = 0;
-
-                hands.forEach(h => {
-                    const weight = this.genes[h.id] || 0;
-                    const rgb = hexToRgb(h.color);
-                    rSum += rgb.r * weight;
-                    gSum += rgb.g * weight;
-                    bSum += rgb.b * weight;
-                    totalWeight += weight;
-                });
-
-                if (totalWeight === 0) {
-                    rSum = gSum = bSum = 255; 
-                }
-
-                const red = Math.floor(rSum);
-                const green = Math.floor(gSum);
-                const blue = Math.floor(bSum);
-                const baseColorStr = `rgb(${red}, ${green}, ${blue})`;
+                const baseColorStr = getCreatureColorString(this.genes);
 
                 if (isHighlighted) {
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius + 6, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(${red}, ${green}, ${blue}, 0.45)`; 
+                    ctx.fillStyle = baseColorStr.replace('rgb', 'rgba').replace(')', ', 0.45)'); 
                     ctx.shadowBlur = 10;
                     ctx.shadowColor = baseColorStr;
                     ctx.fill();
@@ -742,11 +785,11 @@
 
             document.querySelectorAll('.delete-hand-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    const targetId = btn.dataset.id;
                     if (hands.length <= 3) {
                         alert("じゃんけん（すくみ）が破綻しないよう、手は最低3つ必要です！");
                         return;
                     }
+                    const targetId = btn.dataset.id;
                     
                     hands = hands.filter(h => h.id !== targetId);
                     hands.forEach(h => {
@@ -1000,7 +1043,18 @@
                     selectedCreature = null;
                 } else {
                     const initGenes = getInitialGenes();
-                    creatures.push(new Creature(x, y, initGenes));
+                    const familyId = `家系 #${++familyCounter}`;
+                    const baseColor = getCreatureColorString(initGenes);
+                    
+                    // 家系図レジストリに始祖ノードを登録
+                    lineageRegistry[familyId] = {
+                        id: familyId,
+                        parentId: null,
+                        label: familyId,
+                        color: baseColor
+                    };
+
+                    creatures.push(new Creature(x, y, initGenes, familyId, familyId));
                     countBadge.textContent = creatures.length;
                 }
             }
@@ -1019,7 +1073,6 @@
                 cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                 cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                // コピー（ブースト）時は突然変異は伴わないため、同一系統(lineageId)として生成
                 const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.lineageId);
                 
                 creatures.push(clone);
@@ -1034,6 +1087,7 @@
             lastSelectedCreatureId = null;
             familyCounter = 0;
             creatureIdCounter = 0;
+            lineageRegistry = {}; // 家系図レジストリもクリア
         });
 
         function playJanken(handId1, handId2) {
@@ -1109,7 +1163,7 @@
                 if (lastSelectedCreatureId !== null) {
                     statusContent.innerHTML = `
                         <div class="status-placeholder">
-                            生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の一族全員が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
+                            生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の一族全員が<br>ぼんなり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
                         </div>
                     `;
                     lastSelectedCreatureId = null;
@@ -1187,6 +1241,96 @@
             });
         }
 
+        // 【新設】全体の系統樹・家系図を描画する関数
+        function updateLineagePanel() {
+            // 1. 各系統の現在生存数を集計
+            const counts = {};
+            creatures.forEach(c => {
+                counts[c.lineageId] = (counts[c.lineageId] || 0) + 1;
+            });
+
+            // 2. 生存個体がいる系統、およびその「祖先ノード」を遡ってアクティブとして記憶
+            const activeNodes = new Set();
+            Object.keys(counts).forEach(lid => {
+                let currentId = lid;
+                while (currentId) {
+                    activeNodes.add(currentId);
+                    const node = lineageRegistry[currentId];
+                    currentId = node ? node.parentId : null;
+                }
+            });
+
+            // 大元のルート（parentId が null かつ、生存者またはその子孫が生き残っているノード）を抽出
+            const roots = Object.values(lineageRegistry).filter(node => node.parentId === null && activeNodes.has(node.id));
+
+            if (roots.length === 0) {
+                lineageContent.innerHTML = `
+                    <div class="status-placeholder">
+                        画面をクリックして<br>生き物を配置すると<br>ここに系統樹（家系図）が<br>リアルタイムに形成されます。
+                    </div>
+                `;
+                return;
+            }
+
+            // 3. ルートから再帰的にHTMLツリー構造を組み立てる
+            let html = '';
+            roots.forEach(root => {
+                const aliveCount = counts[root.id] || 0;
+                
+                // 画面で個体が選択されている時、家系図内でもそのノード（または一族）をライトアップさせる
+                const isSelected = selectedCreature && (
+                    getSelectedHighlightMode() === 'pureLineage' ? (root.id === selectedCreature.lineageId) : (root.id.split('-')[0] === selectedCreature.familyId)
+                );
+                const labelStyle = isSelected ? 'color: #f1c40f; font-weight: bold; background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px;' : '';
+                
+                // 自身は絶滅しているが、子孫が生きている場合は半透明にして歴史を表す
+                const opacity = aliveCount > 0 ? '1.0' : '0.5';
+
+                html += `
+                    <div style="opacity: ${opacity}; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0;">
+                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${root.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
+                            <span style="${labelStyle}">${root.label} <span style="color: #aaa; font-size: 10px;">(${aliveCount}体)</span></span>
+                        </div>
+                        ${buildLineageTreeHtml(root.id, counts, activeNodes)}
+                    </div>
+                `;
+            });
+
+            lineageContent.innerHTML = html;
+        }
+
+        // 系統樹の各階層を再帰的に生成するヘルパー関数
+        function buildLineageTreeHtml(parentId, counts, activeNodes) {
+            const children = Object.values(lineageRegistry).filter(node => node.parentId === parentId && activeNodes.has(node.id));
+            if (children.length === 0) return '';
+
+            // CSSの左ボーダー（破線）を使って、トーナメントの分岐階層線を表現
+            let html = '<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 10px; border-left: 1px dashed #666; margin-left: 4px;">';
+            
+            children.forEach(node => {
+                const aliveCount = counts[node.id] || 0;
+                const isSelected = selectedCreature && (
+                    getSelectedHighlightMode() === 'pureLineage' ? (node.id === selectedCreature.lineageId) : (node.id.split('-')[0] === selectedCreature.familyId)
+                );
+                const labelStyle = isSelected ? 'color: #f1c40f; font-weight: bold; background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px;' : '';
+                const opacity = aliveCount > 0 ? '1.0' : '0.5';
+
+                html += `
+                    <div style="opacity: ${opacity};">
+                        <div style="display: flex; align-items: center; gap: 6px; margin: 2px 0;">
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${node.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
+                            <span style="${labelStyle}">${node.label} <span style="color: #aaa; font-size: 10px;">(${aliveCount}体)</span></span>
+                        </div>
+                        ${buildLineageTreeHtml(node.id, counts, activeNodes)}
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+
         function loop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -1223,10 +1367,8 @@
                 let isHighlighted = false;
                 if (selectedCreature) {
                     if (currentMode === 'pureLineage') {
-                        // 【変更】突然変異していない範囲の一族全員（同じ詳細系統IDの個体のみ）
                         isHighlighted = (c.lineageId === selectedCreature.lineageId);
                     } else { 
-                        // 一族全員（同じ家系ID）
                         isHighlighted = (c.familyId === selectedCreature.familyId);
                     }
                 }
@@ -1245,7 +1387,6 @@
                         cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                         cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                        // 初期生成時は親の家系ID、系統IDをそのまま継承
                         const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.lineageId);
 
                         const mutationRate = parseFloat(mutRateSlider.value) / 100;
@@ -1256,8 +1397,17 @@
                             
                             clone.mutate(mutationAmount); 
                             
-                            // 突然変異が起きた場合、新しい「派生系統」として系統IDを更新
+                            // 突然変異が起きた場合、新しい「派生系統」として系統樹に登録
+                            const oldLineageId = c.lineageId;
                             clone.lineageId = `${c.lineageId}-m${clone.id}`;
+                            
+                            const childColor = getCreatureColorString(clone.genes);
+                            lineageRegistry[clone.lineageId] = {
+                                id: clone.lineageId,
+                                parentId: oldLineageId,
+                                label: `変異 #${clone.id}`,
+                                color: childColor
+                            };
                         }
 
                         nextCreatures.push(clone);
@@ -1276,6 +1426,7 @@
             countBadge.textContent = creatures.length;
 
             updateStatusPanel();
+            updateLineagePanel(); // 【新設】家系図パネルを毎フレーム更新
 
             requestAnimationFrame(loop);
         }
