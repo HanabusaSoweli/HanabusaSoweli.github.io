@@ -45,6 +45,7 @@
         /* 右側：ステータスパネル */
         #statusPanel {
             width: 260px;
+            height: 480px; /* Canvasの縦幅と一致させて固定 */
             background-color: #2c2c2c;
             border: 2px solid #555;
             border-radius: 8px;
@@ -118,14 +119,23 @@
             font-weight: bold;
         }
 
-        /* 遺伝子バーのビジュアル */
+        #statusContent {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex: 1;
+            min-height: 0; /* 子要素の縮小・スクロールを正常に機能させる */
+        }
+
+        /* 遺伝子バーのビジュアル（どれだけ手が増えてもここだけスクロールする） */
         .gene-bar-container {
             display: flex;
             flex-direction: column;
             gap: 4px;
             margin-top: 5px;
-            max-height: 160px;
+            flex: 1;
             overflow-y: auto;
+            padding-right: 4px;
         }
         .gene-label {
             font-size: 11px;
@@ -400,16 +410,16 @@
                     </div>
                 </div>
 
-                <div id="statusContent" style="display: flex; flex-direction: column; gap: 10px; height: 100%;">
+                <div id="statusContent">
                     <div class="status-placeholder">
-                        生き物にカーソルを合わせると<br>詳細なステータスと<br>指定した範囲の親戚達が<br>ぼんやり光り輝きます。
+                        生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の親戚達が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
                     </div>
                 </div>
             </div>
         </div>
         
         <div id="info">
-            【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置</strong>してください。<br>
+            【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置 / 個体を選択</strong>してください。<br>
             現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
             <span style="color: #e74c3c; font-weight: bold;">※ 指定の判定半径内に制限以上の個体が高密度に集まると、その瞬間「即死」して消滅します。</span>
         </div>
@@ -460,10 +470,8 @@
 
         const familyGraph = new Map();
 
-        // マウス座標＆ホバー中の個体管理
-        let mouseX = -9999;
-        let mouseY = -9999;
-        let hoveredCreature = null;
+        // 選択中の個体管理
+        let selectedCreature = null;
 
         function hexToRgb(hex) {
             let shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
@@ -1014,34 +1022,46 @@
             });
         });
 
-        canvas.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            mouseX = e.clientX - rect.left;
-            mouseY = e.clientY - rect.top;
-        });
-
-        canvas.addEventListener('mouseleave', () => {
-            mouseX = -9999;
-            mouseY = -9999;
-            hoveredCreature = null;
-        });
-
+        // 【修正】クリックイベントで個体選択 / 配置切り替え
         canvas.addEventListener('mousedown', (e) => {
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            if (hoveredCreature) return;
+            // クリック位置の近くにいる生き物を探索
+            let closestDist = 20; 
+            let clickedCreature = null;
 
-            const initGenes = getInitialGenes();
-            creatures.push(new Creature(x, y, initGenes));
-            countBadge.textContent = creatures.length;
+            for (let i = 0; i < creatures.length; i++) {
+                const c = creatures[i];
+                const dist = Math.hypot(c.x - x, c.y - y);
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    clickedCreature = c;
+                }
+            }
+
+            if (clickedCreature) {
+                // 生き物をクリックした場合は、その個体を選択状態にする
+                selectedCreature = clickedCreature;
+            } else {
+                // 何もない場所をクリックした場合
+                if (selectedCreature) {
+                    // 何かを選択中なら、まずは選択を解除
+                    selectedCreature = null;
+                } else {
+                    // 何も選択していない場合は、新しい生き物を配置
+                    const initGenes = getInitialGenes();
+                    creatures.push(new Creature(x, y, initGenes));
+                    countBadge.textContent = creatures.length;
+                }
+            }
         });
 
         clearBtn.addEventListener('click', () => {
             creatures = [];
             countBadge.textContent = 0;
-            hoveredCreature = null;
+            selectedCreature = null; // 選択解除
             familyCounter = 0;
             creatureIdCounter = 0;
             familyGraph.clear();
@@ -1116,16 +1136,16 @@
         }
 
         function updateStatusPanel() {
-            if (!hoveredCreature) {
+            if (!selectedCreature) {
                 statusContent.innerHTML = `
                     <div class="status-placeholder">
-                        生き物にカーソルを合わせると<br>詳細なステータスと<br>指定した範囲の親戚達が<br>ぼんやり光り輝きます。
+                        生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の親戚達が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
                     </div>
                 `;
                 return;
             }
 
-            const c = hoveredCreature;
+            const c = selectedCreature;
             const isOverCrowded = c.lastNeighborCount >= currentCrowdLimit;
             
             let geneBarsHtml = '';
@@ -1164,7 +1184,7 @@
                 </div>
                 
                 <div class="gene-bar-container">
-                    <span class="gene-label">🧬 遺伝子比率 (動的ブレンド)</span>
+                    <span class="gene-label" style="position: sticky; top: 0; background: #2c2c2c; padding-bottom: 4px; display: block; z-index: 5;">🧬 遺伝子比率 (動的ブレンド)</span>
                     ${geneBarsHtml}
                 </div>
             `;
@@ -1187,23 +1207,16 @@
                 cleanUpFamilyGraph();
             }
 
-            let closestDist = 20; 
-            let tempHovered = null;
-
-            for (let i = 0; i < creatures.length; i++) {
-                const c = creatures[i];
-                const dist = Math.hypot(c.x - mouseX, c.y - mouseY);
-                if (dist < closestDist) {
-                    closestDist = dist;
-                    tempHovered = c;
-                }
+            // 選択中の個体が死んで消滅した場合は選択を解除
+            if (selectedCreature && selectedCreature.hp <= 0) {
+                selectedCreature = null;
             }
-            hoveredCreature = tempHovered;
 
-            if (hoveredCreature) {
+            // 選択中の個体がある場合、その周囲に「密度判定のインジケーター円」を常時描画
+            if (selectedCreature) {
                 ctx.save();
                 ctx.beginPath();
-                ctx.arc(hoveredCreature.x, hoveredCreature.y, currentCrowdRadius, 0, Math.PI * 2); 
+                ctx.arc(selectedCreature.x, selectedCreature.y, currentCrowdRadius, 0, Math.PI * 2); 
                 
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
                 ctx.fill();
@@ -1219,8 +1232,8 @@
             const currentMode = getSelectedHighlightMode();
             let relativeIds = new Set();
             
-            if (hoveredCreature && currentMode === '5degrees') {
-                relativeIds = getRelativesWithin5Degrees(hoveredCreature.id);
+            if (selectedCreature && currentMode === '5degrees') {
+                relativeIds = getRelativesWithin5Degrees(selectedCreature.id);
             }
 
             for (let i = 0; i < creatures.length; i++) {
@@ -1228,11 +1241,11 @@
                 c.update(simDt, creatures);
                 
                 let isHighlighted = false;
-                if (hoveredCreature) {
+                if (selectedCreature) {
                     if (currentMode === '5degrees') {
                         isHighlighted = relativeIds.has(c.id);
                     } else { 
-                        isHighlighted = (c.familyId === hoveredCreature.familyId);
+                        isHighlighted = (c.familyId === selectedCreature.familyId);
                     }
                 }
 
@@ -1256,7 +1269,6 @@
                         const mutationRate = parseFloat(mutRateSlider.value) / 100;
                         if (Math.random() < mutationRate) {
                             const maxAmt = parseFloat(mutAmtSlider.value);
-                            // 【修正】1% 〜 設定最大値(例: 15%) の範囲でランダムに変動させる
                             const randomAmt = maxAmt > 1 ? 1 + Math.random() * (maxAmt - 1) : 1;
                             const mutationAmount = randomAmt / 100;
                             
