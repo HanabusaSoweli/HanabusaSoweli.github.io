@@ -341,10 +341,10 @@
                             </div>
                         </div>
                         <div class="slider-group" style="width: 100%;">
-                            <label>🔮 変異変化幅 (%)</label>
+                            <label>🔮 最大変異変化幅 (1%～設定値)</label>
                             <div class="input-row">
-                                <input type="range" id="mutAmt" min="1" max="50" value="10">
-                                <input type="number" id="mutAmtNum" min="1" max="50" value="10">
+                                <input type="range" id="mutAmt" min="1" max="50" value="15">
+                                <input type="number" id="mutAmtNum" min="1" max="50" value="15">
                             </div>
                         </div>
                         <!-- 密度・即死調整用UI -->
@@ -560,13 +560,13 @@
 
                 this.lastNeighborCount = neighborCount;
 
-                // 【最重要】閾値を超えたらその場で即死
+                // 閾値を超えたらその場で即死
                 if (neighborCount >= currentCrowdLimit) {
                     this.hp = 0;
                     return; 
                 }
 
-                // 密度による加速は無くし、生きている間は常に等速(1.0)で減少
+                // 常に等速(1.0)で減少
                 this.decayAccumulator += simDt * 1.0;
 
                 const decayIntervalMs = parseFloat(decayIntervalSlider.value) * 1000;
@@ -865,7 +865,7 @@
             const weights = {};
             let sum = 0;
             hands.forEach(h => {
-                const slider = document.getElementById(`weight_${h.id}`);
+                const slider = document.getElementById('weight_' + h.id);
                 const val = slider ? parseFloat(slider.value) : 50;
                 weights[h.id] = val;
                 sum += val;
@@ -1252,9 +1252,14 @@
 
                         const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.id);
 
+                        // 突然変異の計算
                         const mutationRate = parseFloat(mutRateSlider.value) / 100;
                         if (Math.random() < mutationRate) {
-                            const mutationAmount = parseFloat(mutAmtSlider.value) / 100;
+                            const maxAmt = parseFloat(mutAmtSlider.value);
+                            // 【修正】1% 〜 設定最大値(例: 15%) の範囲でランダムに変動させる
+                            const randomAmt = maxAmt > 1 ? 1 + Math.random() * (maxAmt - 1) : 1;
+                            const mutationAmount = randomAmt / 100;
+                            
                             clone.mutate(mutationAmount); 
                         }
 
