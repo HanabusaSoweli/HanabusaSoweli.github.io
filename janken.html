@@ -20,26 +20,26 @@
         /* アプリ全体を左右に二分する最外レイアウト */
         #app-wrapper {
             display: flex;
-            gap: 15px; /* 20px -> 15px に縮小 */
+            gap: 15px;
             width: 98%;
             max-width: 1650px;
             height: 92vh;
             align-items: stretch;
         }
 
-        /* 【変更】左側エリア：Canvasとステータスがぴったり収まる幅(1070px)に固定 */
+        /* 左側エリア：Canvasとステータスがぴったり収まる幅(1070px)に固定 */
         #left-area {
-            flex: 0 0 1070px; /* 固定幅にすることで右側の家系図を確実に広げる */
+            flex: 0 0 1070px;
             display: flex;
             flex-direction: column;
-            gap: 10px; /* 12px -> 10px に縮小 */
+            gap: 10px;
             min-width: 0;
         }
         
         /* 左側エリア内の下部（Canvas と ステータスパネル） */
         #main-area {
             display: flex;
-            gap: 10px; /* 15px -> 10px に縮小 */
+            gap: 10px;
             width: 100%;
             align-items: flex-start;
         }
@@ -51,14 +51,14 @@
             cursor: crosshair;
         }
 
-        /* 【変更】中央：ステータスパネルの幅を元のスマートなサイズ（260px）に固定 */
+        /* 中央：ステータスパネルの幅を元のスマートなサイズ（260px）に固定 */
         #statusPanel {
-            width: 260px; /* flex: 1 を廃止して固定幅に戻す */
-            height: 480px; /* Canvasの縦幅と一致 */
+            width: 260px;
+            height: 480px;
             background-color: #2c2c2c;
             border: 2px solid #555;
             border-radius: 8px;
-            padding: 12px; /* 15px -> 12px に縮小 */
+            padding: 12px;
             box-sizing: border-box;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             display: flex;
@@ -74,10 +74,10 @@
             text-align: center;
         }
 
-        /* 【変更】右側：固定幅(360px)を廃止し、余った右側のスペースすべてに広がるよう修正 */
+        /* 右側：余った右側のスペースすべてに広がるよう修正 */
         #lineagePanel {
-            flex: 1; /* 左側が締まった分、横幅がダイナミックに広がります */
-            min-width: 360px; /* 最小幅は確保 */
+            flex: 1;
+            min-width: 360px;
             background-color: #2c2c2c;
             border: 2px solid #555;
             border-radius: 8px;
@@ -217,34 +217,34 @@
             transition: width 0.2s;
         }
 
-        /* 【変更】設定パネル全体の余白を削ってタイトに */
+        /* 設定パネル全体の余白を削ってタイトに */
         #controls {
             background-color: #333;
-            padding: 10px 14px; /* 12px 20px -> 10px 14px */
+            padding: 10px 14px;
             border-radius: 8px;
             display: flex;
             flex-direction: column;
-            gap: 8px; /* 12px -> 8px */
+            gap: 8px;
             align-items: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
             width: 100%;
             box-sizing: border-box;
         }
         
-        /* 【変更】グリッドの隙間を縮小 */
+        /* グリッドの隙間を縮小 */
         .control-grid {
             display: flex;
-            gap: 15px; /* 20px -> 15px */
+            gap: 15px;
             width: 100%;
             justify-content: flex-start;
         }
-        /* 【変更】カラム内のパーツ間隔と右側の余白を削減 */
+        /* カラム内のパーツ間隔と右側の余白を削減 */
         .control-column {
             display: flex;
             flex-direction: column;
-            gap: 6px; /* 8px -> 6px */
+            gap: 6px;
             border-right: 1px solid #555;
-            padding-right: 15px; /* 20px -> 15px */
+            padding-right: 15px;
             position: relative;
             box-sizing: border-box;
         }
@@ -253,13 +253,13 @@
             padding-right: 0;
         }
 
-        /* 【変更】スライダーグループの幅をカラム幅いっぱいに追従 */
+        /* スライダーグループの幅をカラム幅いっぱいに追従 */
         .slider-group {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             font-size: 11px;
-            width: 100%; /* 固定幅を廃止 */
+            width: 100%;
         }
         .slider-group label {
             margin-bottom: 3px;
@@ -379,7 +379,7 @@
             <div id="controls">
                 <div class="control-grid">
                     
-                    <!-- カラム1: 手のマスターリスト管理 (幅を280pxから250pxに縮小) -->
+                    <!-- カラム1: 手のマスターリスト管理 -->
                     <div class="control-column" style="width: 250px;">
                         <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">✋ 手のマスターリスト</h4>
                         <div id="handListContainer" style="display: flex; flex-direction: column; gap: 4px; height: 110px; overflow-y: auto; background: #1e1e1e; padding: 6px; border-radius: 4px; border: 1px solid #444;"></div>
@@ -403,13 +403,13 @@
                         </div>
                     </div>
 
-                    <!-- カラム2: 誕生時の初期遺伝子比率 (幅を280pxから250pxに縮小) -->
+                    <!-- カラム2: 誕生時の初期遺伝子比率 -->
                     <div class="control-column" id="dynamicSlidersColumn" style="width: 250px;">
                         <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">🧬 誕生時の初期遺伝子比率</h4>
                         <div id="dynamicSlidersContainer" style="display: flex; flex-direction: column; gap: 6px; height: 140px; overflow-y: auto; padding-right: 5px;"></div>
                     </div>
 
-                    <!-- カラム3: 環境・進化・密度パラメータ (文字が収まるよう270pxを確保) -->
+                    <!-- カラム3: 環境・進化・密度パラメータ -->
                     <div class="control-column" style="width: 270px;">
                         <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">⚙️ 環境・シミュレーション設定</h4>
                         <div style="display: flex; flex-direction: column; gap: 6px; height: 140px; overflow-y: auto; padding-right: 5px;">
@@ -847,8 +847,11 @@
                 weights[h.id] = val;
                 sum += val;
             });
-            if (sum === 0) hands.forEach(h => weights[h.id] = 1 / hands.length);
-            else weights[h.id] /= sum);
+            if (sum === 0) {
+                hands.forEach(h => weights[h.id] = 1 / hands.length);
+            } else {
+                hands.forEach(h => weights[h.id] /= sum);
+            }
             return weights;
         }
 
