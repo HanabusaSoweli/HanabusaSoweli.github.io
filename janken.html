@@ -119,6 +119,28 @@
             font-weight: bold;
         }
 
+        /* ブーストボタンのスタイル */
+        #boostBtn {
+            width: 100%;
+            padding: 8px;
+            background-color: #e67e22;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            margin-top: 2px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            transition: background-color 0.15s, transform 0.05s;
+        }
+        #boostBtn:hover {
+            background-color: #d35400;
+        }
+        #boostBtn:active {
+            transform: scale(0.98);
+        }
+
         #statusContent {
             display: flex;
             flex-direction: column;
@@ -127,7 +149,7 @@
             min-height: 0; /* 子要素の縮小・スクロールを正常に機能させる */
         }
 
-        /* 遺伝子バーのビジュアル（どれだけ手が増えてもここだけスクロールする） */
+        /* 遺伝子バーのビジュアル */
         .gene-bar-container {
             display: flex;
             flex-direction: column;
@@ -304,7 +326,7 @@
                     </div>
                     <button id="showAddHandFormBtn" style="margin-top: 6px; font-size: 11px; padding: 5px; background: #3498db; color: #fff; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold;">＋ 新しい手を追加</button>
                     
-                    <!-- 手の追加用インラインモーダルフローティングフォーム -->
+                    <!-- 手の追加用フォーム -->
                     <div id="addHandForm" style="display: none; background: #2c2c2c; border: 2px solid #555; padding: 10px; border-radius: 6px; font-size: 11px; flex-direction: column; gap: 8px; position: absolute; z-index: 20; width: 260px; top: 10px; left: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.6);">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 4px;">
                             <strong style="color: #3498db;">🖐️ 手の追加登録</strong>
@@ -317,22 +339,22 @@
                         <div>
                             <span style="color: #aaa; font-weight: bold;">既存の手との相性（新手から見て）:</span>
                             <div id="beatsCheckboxes" style="display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto; background: #111; padding: 6px; border-radius: 4px; margin-top: 4px; border: 1px solid #444;">
-                                <!-- 現在の手との関係性がラジオボタンで自動生成 -->
+                                <!-- 関係性が自動生成 -->
                             </div>
                         </div>
                         <button id="submitAddHandBtn" style="background: #2ecc71; color: #fff; border: none; border-radius: 4px; padding: 6px; cursor: pointer; font-weight: bold; font-size: 11px;">登録を確定</button>
                     </div>
                 </div>
 
-                <!-- カラム2: 誕生時の初期遺伝子比率 (動的生成) -->
+                <!-- カラム2: 誕生時の初期遺伝子比率 -->
                 <div class="control-column" id="dynamicSlidersColumn" style="width: 280px;">
                     <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">🧬 誕生時の初期遺伝子比率</h4>
                     <div id="dynamicSlidersContainer" style="display: flex; flex-direction: column; gap: 6px; height: 140px; overflow-y: auto; padding-right: 5px;">
-                        <!-- ここにマスターリストと同期したスライダーが自動追加される -->
+                        <!-- スライダーが自動追加 -->
                     </div>
                 </div>
 
-                <!-- カラム3: 環境・進化・密度パラメータ -->
+                <!-- カラム3: 环境・進化・密度パラメータ -->
                 <div class="control-column" style="width: 280px;">
                     <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">⚙️ 環境・シミュレーション設定</h4>
                     <div style="display: flex; flex-direction: column; gap: 6px; height: 140px; overflow-y: auto; padding-right: 5px;">
@@ -357,7 +379,6 @@
                                 <input type="number" id="mutAmtNum" min="1" max="50" value="15">
                             </div>
                         </div>
-                        <!-- 密度・即死調整用UI -->
                         <div class="slider-group" style="width: 100%;">
                             <label>📏 密度の判定半径 (px)</label>
                             <div class="input-row">
@@ -390,7 +411,7 @@
             </div>
         </div>
 
-        <!-- メインシミュレーションエリア (Canvas + 右ステータスパネル) -->
+        <!-- メインシミュレーションエリア -->
         <div id="main-area">
             <canvas id="simCanvas" width="800" height="480"></canvas>
             
@@ -574,7 +595,6 @@
                     return; 
                 }
 
-                // 常に等速(1.0)で減少
                 this.decayAccumulator += simDt * 1.0;
 
                 const decayIntervalMs = parseFloat(decayIntervalSlider.value) * 1000;
@@ -889,7 +909,6 @@
 
         function populateRelationshipInputs() {
             beatsCheckboxes.innerHTML = '';
-            
             if (hands.length === 0) {
                 beatsCheckboxes.innerHTML = '<div style="color:#888; font-size:11px; text-align:center;">既存の手がありません</div>';
                 return;
@@ -931,7 +950,7 @@
             const color = newHandColor.value;
 
             if (!name) {
-                alert('手の名前を入力してください！(例: ⚡ 雷)');
+                alert('手の名前を入力してください！');
                 return;
             }
 
@@ -977,7 +996,6 @@
             addHandForm.style.display = 'none';
         });
 
-        // スライダー同期用
         const inputPairs = [
             { slider: document.getElementById('decayInterval'), num: document.getElementById('decayNum') },
             { slider: document.getElementById('mutRate'), num: document.getElementById('mutRateNum') },
@@ -1022,13 +1040,11 @@
             });
         });
 
-        // 【修正】クリックイベントで個体選択 / 配置切り替え
         canvas.addEventListener('mousedown', (e) => {
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            // クリック位置の近くにいる生き物を探索
             let closestDist = 20; 
             let clickedCreature = null;
 
@@ -1042,15 +1058,11 @@
             }
 
             if (clickedCreature) {
-                // 生き物をクリックした場合は、その個体を選択状態にする
                 selectedCreature = clickedCreature;
             } else {
-                // 何もない場所をクリックした場合
                 if (selectedCreature) {
-                    // 何かを選択中なら、まずは選択を解除
                     selectedCreature = null;
                 } else {
-                    // 何も選択していない場合は、新しい生き物を配置
                     const initGenes = getInitialGenes();
                     creatures.push(new Creature(x, y, initGenes));
                     countBadge.textContent = creatures.length;
@@ -1058,10 +1070,32 @@
             }
         });
 
+        // 【新機能】ステータスパネル内のクリックイベント（ブーストボタン判定用）
+        document.getElementById('statusPanel').addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'boostBtn') {
+                if (!selectedCreature) return;
+                
+                const c = selectedCreature;
+                const angle = Math.random() * Math.PI * 2;
+                const offset = c.radius * 1.5; 
+                let cloneX = c.x + Math.cos(angle) * offset;
+                let cloneY = c.y + Math.sin(angle) * offset;
+
+                cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
+                cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
+
+                // 突然変異を一切起こさずに新しいクローン（子供）を生成
+                const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.id);
+                
+                creatures.push(clone);
+                countBadge.textContent = creatures.length;
+            }
+        });
+
         clearBtn.addEventListener('click', () => {
             creatures = [];
             countBadge.textContent = 0;
-            selectedCreature = null; // 選択解除
+            selectedCreature = null; 
             familyCounter = 0;
             creatureIdCounter = 0;
             familyGraph.clear();
@@ -1183,6 +1217,9 @@
                     </span>
                 </div>
                 
+                <!-- 【新機能】子孫作製ボタン -->
+                <button id="boostBtn">⚡ この個体の子孫を作製 (ブースト)</button>
+                
                 <div class="gene-bar-container">
                     <span class="gene-label" style="position: sticky; top: 0; background: #2c2c2c; padding-bottom: 4px; display: block; z-index: 5;">🧬 遺伝子比率 (動的ブレンド)</span>
                     ${geneBarsHtml}
@@ -1195,7 +1232,6 @@
         function loop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 密度用UIパラメータの取得
             currentCrowdRadius = parseFloat(document.getElementById('crowdRadius').value) || 50;
             currentCrowdLimit = parseFloat(document.getElementById('crowdLimit').value) || 20;
 
@@ -1207,20 +1243,16 @@
                 cleanUpFamilyGraph();
             }
 
-            // 選択中の個体が死んで消滅した場合は選択を解除
             if (selectedCreature && selectedCreature.hp <= 0) {
                 selectedCreature = null;
             }
 
-            // 選択中の個体がある場合、その周囲に「密度判定のインジケーター円」を常時描画
             if (selectedCreature) {
                 ctx.save();
                 ctx.beginPath();
                 ctx.arc(selectedCreature.x, selectedCreature.y, currentCrowdRadius, 0, Math.PI * 2); 
-                
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
                 ctx.fill();
-
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
                 ctx.lineWidth = 1.5;
                 ctx.setLineDash([6, 4]); 
@@ -1265,7 +1297,6 @@
 
                         const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.id);
 
-                        // 突然変異の計算
                         const mutationRate = parseFloat(mutRateSlider.value) / 100;
                         if (Math.random() < mutationRate) {
                             const maxAmt = parseFloat(mutAmtSlider.value);
