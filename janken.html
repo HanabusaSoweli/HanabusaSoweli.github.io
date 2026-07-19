@@ -282,15 +282,19 @@
     <div id="container">
         <h2 style="margin: 0;">じゃんけん生態系シミュレーター (カスタムハンド版)</h2>
         
+        <!-- コントロールパネル -->
         <div id="controls">
             <div class="control-grid">
                 
+                <!-- カラム1: 手のマスターリスト管理 -->
                 <div class="control-column" style="width: 280px;">
                     <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">✋ 手のマスターリスト</h4>
                     <div id="handListContainer" style="display: flex; flex-direction: column; gap: 4px; height: 110px; overflow-y: auto; background: #1e1e1e; padding: 6px; border-radius: 4px; border: 1px solid #444;">
-                        </div>
+                        <!-- ここに登録されている手の一覧が動的に入る -->
+                    </div>
                     <button id="showAddHandFormBtn" style="margin-top: 6px; font-size: 11px; padding: 5px; background: #3498db; color: #fff; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold;">＋ 新しい手を追加</button>
                     
+                    <!-- 手の追加用インラインモーダルフローティングフォーム -->
                     <div id="addHandForm" style="display: none; background: #2c2c2c; border: 2px solid #555; padding: 10px; border-radius: 6px; font-size: 11px; flex-direction: column; gap: 8px; position: absolute; z-index: 20; width: 260px; top: 10px; left: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.6);">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 4px;">
                             <strong style="color: #3498db;">🖐️ 手の追加登録</strong>
@@ -303,18 +307,22 @@
                         <div>
                             <span style="color: #aaa; font-weight: bold;">既存の手との相性（新手から見て）:</span>
                             <div id="beatsCheckboxes" style="display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto; background: #111; padding: 6px; border-radius: 4px; margin-top: 4px; border: 1px solid #444;">
-                                </div>
+                                <!-- 現在の手との関係性がラジオボタンで自動生成 -->
+                            </div>
                         </div>
                         <button id="submitAddHandBtn" style="background: #2ecc71; color: #fff; border: none; border-radius: 4px; padding: 6px; cursor: pointer; font-weight: bold; font-size: 11px;">登録を確定</button>
                     </div>
                 </div>
 
+                <!-- カラム2: 誕生時の初期遺伝子比率 (動的生成) -->
                 <div class="control-column" id="dynamicSlidersColumn" style="width: 280px;">
                     <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">🧬 誕生時の初期遺伝子比率</h4>
                     <div id="dynamicSlidersContainer" style="display: flex; flex-direction: column; gap: 6px; height: 140px; overflow-y: auto; padding-right: 5px;">
-                        </div>
+                        <!-- ここにマスターリストと同期したスライダーが自動追加される -->
+                    </div>
                 </div>
 
+                <!-- カラム3: 環境・進化・密度パラメータ -->
                 <div class="control-column" style="width: 280px;">
                     <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">⚙️ 環境・シミュレーション設定</h4>
                     <div style="display: flex; flex-direction: column; gap: 6px; height: 140px; overflow-y: auto; padding-right: 5px;">
@@ -339,6 +347,7 @@
                                 <input type="number" id="mutAmtNum" min="1" max="50" value="10">
                             </div>
                         </div>
+                        <!-- 密度・即死調整用UI -->
                         <div class="slider-group" style="width: 100%;">
                             <label>📏 密度の判定半径 (px)</label>
                             <div class="input-row">
@@ -347,17 +356,10 @@
                             </div>
                         </div>
                         <div class="slider-group" style="width: 100%;">
-                            <label>👥 混雑基準の個体数 (体)</label>
+                            <label>💀 即死基準の混雑個体数 (体)</label>
                             <div class="input-row">
                                 <input type="range" id="crowdLimit" min="1" max="100" value="20">
                                 <input type="number" id="crowdLimitNum" min="1" max="100" value="20">
-                            </div>
-                        </div>
-                        <div class="slider-group" style="width: 100%;">
-                            <label>🔥 混雑時の減少倍率 (倍)</label>
-                            <div class="input-row">
-                                <input type="range" id="crowdMult" min="1" max="50" value="10">
-                                <input type="number" id="crowdMultNum" min="1" max="50" value="10">
                             </div>
                         </div>
                     </div>
@@ -378,12 +380,14 @@
             </div>
         </div>
 
+        <!-- メインシミュレーションエリア (Canvas + 右ステータスパネル) -->
         <div id="main-area">
             <canvas id="simCanvas" width="800" height="480"></canvas>
             
             <div id="statusPanel">
                 <h3>🧬 個体ステータス</h3>
                 
+                <!-- 親戚ハイライトのトグル設定 -->
                 <div id="highlightConfig">
                     <div class="highlight-title">💡 ハイライト対象</div>
                     <div class="radio-group">
@@ -407,7 +411,7 @@
         <div id="info">
             【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置</strong>してください。<br>
             現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
-            <span style="color: #1abc9c; font-weight: bold;">※ 周囲に他個体が多いと密状態になりHP減少が加速します（環境設定で自由にルール変更可能）。</span>
+            <span style="color: #e74c3c; font-weight: bold;">※ 指定の判定半径内に制限以上の個体が高密度に集まると、その瞬間「即死」して消滅します。</span>
         </div>
     </div>
 
@@ -439,10 +443,9 @@
         const SPEED_MULT = 0.25; 
         let timeScale = 1.0; 
 
-        // 密度設定のリアルタイム参照用変数（毎ループの最初に更新）
+        // 密度設定のリアルタイム参照用変数
         let currentCrowdRadius = 50;
         let currentCrowdLimit = 20;
-        let currentCrowdMult = 10;
 
         // --- 動的に増減可能なじゃんけんの手のマスターデータ ---
         let hands = [
@@ -455,7 +458,6 @@
         let familyCounter = 0;
         let creatureIdCounter = 0;
 
-        // 家系関係を保持する無向グラフ (Map: creatureId -> Set of connected creatureIds)
         const familyGraph = new Map();
 
         // マウス座標＆ホバー中の個体管理
@@ -463,7 +465,6 @@
         let mouseY = -9999;
         let hoveredCreature = null;
 
-        // --- カラーブレンド用のヘルパー関数 (16進数 -> RGB) ---
         function hexToRgb(hex) {
             let shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
             hex = hex.replace(shorthandRegex, function(m, r, g, b) {
@@ -479,7 +480,7 @@
 
         class Creature {
             constructor(x, y, genes, familyId, parentId = null) {
-                this.id = ++creatureIdCounter; // ユニークID
+                this.id = ++creatureIdCounter;
                 
                 this.x = x;
                 this.y = y;
@@ -491,13 +492,11 @@
                 this.vx = Math.cos(angle) * speed;
                 this.vy = Math.sin(angle) * speed;
 
-                // 遺伝子配列のディープコピー
                 this.genes = {};
                 hands.forEach(h => {
                     this.genes[h.id] = genes[h.id] !== undefined ? genes[h.id] : 0;
                 });
 
-                // 合計が確実に1になるよう、作成時に正規化
                 let sum = 0;
                 hands.forEach(h => sum += this.genes[h.id]);
                 if (sum > 0) {
@@ -512,7 +511,6 @@
 
                 this.familyId = familyId || `家系 #${++familyCounter}`;
 
-                // 親子関係を家系グラフに登録
                 familyGraph.set(this.id, new Set());
                 if (parentId && familyGraph.has(parentId)) {
                     familyGraph.get(parentId).add(this.id);
@@ -520,7 +518,6 @@
                 }
 
                 this.lastNeighborCount = 0;
-                this.lastMultiplier = 1.0;
             }
 
             isInvincible() {
@@ -550,9 +547,8 @@
 
                 this.simulatedAge += simDt;
 
-                // 密度依存型HP減少システム (リアルタイム設定値を使用)
+                // 密度チェック
                 let neighborCount = 0;
-
                 for (let i = 0; i < allCreatures.length; i++) {
                     const other = allCreatures[i];
                     if (other === this) continue;
@@ -562,15 +558,16 @@
                     }
                 }
 
-                // 指定数(currentCrowdLimit)で指定倍率(currentCrowdMult)に達するように傾きを調整
-                // 孤独時（0体）の基本減少速度は 0.4 倍
-                const slope = (currentCrowdMult - 0.4) / currentCrowdLimit;
-                const densityMultiplier = Math.max(0.1, 0.4 + neighborCount * slope);
-
                 this.lastNeighborCount = neighborCount;
-                this.lastMultiplier = densityMultiplier;
 
-                this.decayAccumulator += simDt * densityMultiplier;
+                // 【最重要】閾値を超えたらその場で即死
+                if (neighborCount >= currentCrowdLimit) {
+                    this.hp = 0;
+                    return; 
+                }
+
+                // 密度による加速は無くし、生きている間は常に等速(1.0)で減少
+                this.decayAccumulator += simDt * 1.0;
 
                 const decayIntervalMs = parseFloat(decayIntervalSlider.value) * 1000;
                 if (this.decayAccumulator >= decayIntervalMs) {
@@ -582,7 +579,6 @@
             draw(isHighlighted) {
                 ctx.save();
 
-                // 遺伝子の比率（重み）に基づき、登録カラーをRGBにブレンド
                 let rSum = 0, gSum = 0, bSum = 0;
                 let totalWeight = 0;
 
@@ -973,14 +969,13 @@
             addHandForm.style.display = 'none';
         });
 
-        // 固定環境設定＆新規密度パラメータ設定の数値・スライダー同期
+        // スライダー同期用
         const inputPairs = [
             { slider: document.getElementById('decayInterval'), num: document.getElementById('decayNum') },
             { slider: document.getElementById('mutRate'), num: document.getElementById('mutRateNum') },
             { slider: document.getElementById('mutAmt'), num: document.getElementById('mutAmtNum') },
             { slider: document.getElementById('crowdRadius'), num: document.getElementById('crowdRadiusNum') },
-            { slider: document.getElementById('crowdLimit'), num: document.getElementById('crowdLimitNum') },
-            { slider: document.getElementById('crowdMult'), num: document.getElementById('crowdMultNum') }
+            { slider: document.getElementById('crowdLimit'), num: document.getElementById('crowdLimitNum') }
         ];
 
         inputPairs.forEach(pair => {
@@ -1131,6 +1126,7 @@
             }
 
             const c = hoveredCreature;
+            const isOverCrowded = c.lastNeighborCount >= currentCrowdLimit;
             
             let geneBarsHtml = '';
             hands.forEach(h => {
@@ -1155,13 +1151,15 @@
                     <span style="color: #2ecc71;">${Math.round(c.hp)} / 15</span>
                 </div>
                 <div class="status-item">
-                    <span>周囲の他個体 (${Math.round(currentCrowdRadius)}px以内):</span>
-                    <span>${c.lastNeighborCount} 体</span>
+                    <span>周囲の他個体 (${Math.round(currentCrowdRadius)}px内):</span>
+                    <span style="color: ${isOverCrowded ? '#e74c3c' : '#fff'};">
+                        ${c.lastNeighborCount} / ${currentCrowdLimit} 体
+                    </span>
                 </div>
                 <div class="status-item">
-                    <span>HP減少速度:</span>
-                    <span style="color: ${c.lastMultiplier > 2 ? '#e74c3c' : '#aaa'};">
-                        ${c.lastMultiplier.toFixed(2)} 倍速
+                    <span>過密状態チェック:</span>
+                    <span style="color: ${isOverCrowded ? '#e74c3c' : '#2ecc71'};">
+                        ${isOverCrowded ? '❌ 過密 (即死判定)' : '🟢 安全'}
                     </span>
                 </div>
                 
@@ -1177,10 +1175,9 @@
         function loop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 密度用UIパラメータの取得（毎フレーム取得し、全処理で共有）
+            // 密度用UIパラメータの取得
             currentCrowdRadius = parseFloat(document.getElementById('crowdRadius').value) || 50;
             currentCrowdLimit = parseFloat(document.getElementById('crowdLimit').value) || 20;
-            currentCrowdMult = parseFloat(document.getElementById('crowdMult').value) || 10;
 
             const nextCreatures = [];
             const simDt = 16.67 * timeScale;
@@ -1203,7 +1200,6 @@
             }
             hoveredCreature = tempHovered;
 
-            // ホバー時の「判定半径サークル」を動的サイズに連動して描画
             if (hoveredCreature) {
                 ctx.save();
                 ctx.beginPath();
@@ -1240,31 +1236,31 @@
                     }
                 }
 
-                c.draw(isHighlighted); 
+                if (c.hp > 0) {
+                    c.draw(isHighlighted); 
 
-                if (c.hp >= 15) {
-                    c.hp -= 5; 
+                    if (c.hp >= 15) {
+                        c.hp -= 5; 
 
-                    const angle = Math.random() * Math.PI * 2;
-                    const offset = c.radius * 1.5; 
-                    let cloneX = c.x + Math.cos(angle) * offset;
-                    let cloneY = c.y + Math.sin(angle) * offset;
+                        const angle = Math.random() * Math.PI * 2;
+                        const offset = c.radius * 1.5; 
+                        let cloneX = c.x + Math.cos(angle) * offset;
+                        let cloneY = c.y + Math.sin(angle) * offset;
 
-                    cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
-                    cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
+                        cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
+                        cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                    const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.id);
+                        const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.id);
 
-                    const mutationRate = parseFloat(mutRateSlider.value) / 100;
-                    if (Math.random() < mutationRate) {
-                        const mutationAmount = parseFloat(mutAmtSlider.value) / 100;
-                        clone.mutate(mutationAmount); 
+                        const mutationRate = parseFloat(mutRateSlider.value) / 100;
+                        if (Math.random() < mutationRate) {
+                            const mutationAmount = parseFloat(mutAmtSlider.value) / 100;
+                            clone.mutate(mutationAmount); 
+                        }
+
+                        nextCreatures.push(clone);
                     }
 
-                    nextCreatures.push(clone);
-                }
-
-                if (c.hp > 0) {
                     nextCreatures.push(c);
                 }
             }
