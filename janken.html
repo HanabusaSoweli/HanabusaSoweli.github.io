@@ -570,23 +570,22 @@
                     this.y = this.radius;
                     this.vy *= -1;
                 }
+                // 【修正箇所】下枠に衝突した時、vx ではなくちゃんと縦方向の vy を反転させるように修正
                 if (this.y + this.radius > canvas.height) {
                     this.y = canvas.height - this.radius;
-                    this.vx *= -1;
+                    this.vy *= -1; 
                 }
 
                 this.simulatedAge += simDt;
 
-                // 密度チェック（修正：生まれたての半透明状態を考慮）
+                // 密度チェック
                 let neighborCount = 0;
                 
-                // 自分が無敵（半透明）でない場合のみ、周囲の混雑度をカウントする
                 if (!this.isInvincible()) {
                     for (let i = 0; i < allCreatures.length; i++) {
                         const other = allCreatures[i];
                         if (other === this) continue;
                         
-                        // カウント相手が生まれたての半透明（無敵）なら、密度のカウント対象から除外する
                         if (other.isInvincible()) continue;
 
                         const dist = Math.hypot(other.x - this.x, other.y - this.y);
@@ -598,7 +597,6 @@
 
                 this.lastNeighborCount = neighborCount;
 
-                // 閾値を超えたらその場で即死（自分が無敵の間は常に neighborCount が 0 なので即死しません）
                 if (neighborCount >= currentCrowdLimit) {
                     this.hp = 0;
                     return; 
@@ -839,7 +837,7 @@
                         }
                     });
 
-                    lastSelectedCreatureId = null; // 構造リセット
+                    lastSelectedCreatureId = null; 
                     renderHandList();
                     renderDynamicSliders();
                     updateStatusPanel();
@@ -993,7 +991,7 @@
             newHandName.value = '';
             addHandForm.style.display = 'none';
 
-            lastSelectedCreatureId = null; // 構造リセット
+            lastSelectedCreatureId = null; 
             renderHandList();
             renderDynamicSliders();
         });
@@ -1081,7 +1079,6 @@
             }
         });
 
-        // ステータスパネル内のクリックイベント（ブーストボタン判定）
         document.getElementById('statusPanel').addEventListener('click', (e) => {
             if (e.target && e.target.id === 'boostBtn') {
                 if (!selectedCreature) return;
@@ -1095,7 +1092,6 @@
                 cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, cloneX));
                 cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, cloneY));
 
-                // 突然変異なしのクローン生成
                 const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.id);
                 
                 creatures.push(clone);
@@ -1197,7 +1193,6 @@
             const c = selectedCreature;
             const isOverCrowded = c.lastNeighborCount >= currentCrowdLimit;
 
-            // 選択した個体が変わった時だけ、静的なHTML構造を組み立てる（ボタンやスクロールバーの消失を防ぐ）
             if (lastSelectedCreatureId !== c.id) {
                 lastSelectedCreatureId = c.id;
 
@@ -1241,7 +1236,6 @@
                 `;
             }
 
-            // 毎フレームの値の流し込み（DOMを破壊しないため操作に一切影響しない）
             document.getElementById('status_family').textContent = c.familyId;
             document.getElementById('status_hp').textContent = `${Math.round(c.hp)} / 15`;
             document.getElementById('status_radius_val').textContent = Math.round(currentCrowdRadius);
