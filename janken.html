@@ -572,25 +572,33 @@
                 }
                 if (this.y + this.radius > canvas.height) {
                     this.y = canvas.height - this.radius;
-                    this.vy *= -1;
+                    this.vx *= -1;
                 }
 
                 this.simulatedAge += simDt;
 
-                // 密度チェック
+                // 密度チェック（修正：生まれたての半透明状態を考慮）
                 let neighborCount = 0;
-                for (let i = 0; i < allCreatures.length; i++) {
-                    const other = allCreatures[i];
-                    if (other === this) continue;
-                    const dist = Math.hypot(other.x - this.x, other.y - this.y);
-                    if (dist < currentCrowdRadius) {
-                        neighborCount++;
+                
+                // 自分が無敵（半透明）でない場合のみ、周囲の混雑度をカウントする
+                if (!this.isInvincible()) {
+                    for (let i = 0; i < allCreatures.length; i++) {
+                        const other = allCreatures[i];
+                        if (other === this) continue;
+                        
+                        // カウント相手が生まれたての半透明（無敵）なら、密度のカウント対象から除外する
+                        if (other.isInvincible()) continue;
+
+                        const dist = Math.hypot(other.x - this.x, other.y - this.y);
+                        if (dist < currentCrowdRadius) {
+                            neighborCount++;
+                        }
                     }
                 }
 
                 this.lastNeighborCount = neighborCount;
 
-                // 閾値を超えたらその場で即死
+                // 閾値を超えたらその場で即死（自分が無敵の間は常に neighborCount が 0 なので即死しません）
                 if (neighborCount >= currentCrowdLimit) {
                     this.hp = 0;
                     return; 
