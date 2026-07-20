@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (系統樹ブラッシュアップ版)</title>
+    <title>じゃんけん生態系シミュレーター (系統樹一本線判定版)</title>
     <style>
         body {
             margin: 0;
@@ -1100,21 +1100,24 @@
                 html += `
                     <div style="margin-bottom: 12px;">
                         <div style="display: flex; align-items: center; gap: 6px; margin: 4px 0;">
-                            <!-- ルート（最上位親）の丸：絶滅時も鮮やかな色を100%維持 -->
+                            <!-- ルート（最上位親）の丸 -->
                             <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
                             <div style="${labelBg} display: flex; flex-direction: column;">
                                 <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
                             </div>
                         </div>
-                        ${buildLineageTreeHtml(info.id, info.alive, counts, childrenMap)}
+                        ${buildLineageTreeHtml(info.id, counts, childrenMap)}
                     </div>`;
             });
             lineageContent.innerHTML = html;
         }
 
-        function buildLineageTreeHtml(parentId, parentAlive, counts, childrenMap) {
+        function buildLineageTreeHtml(parentId, counts, childrenMap) {
             const children = childrenMap.get(parentId) || [];
             if (children.length === 0) return '';
+
+            // 【新条件】親（parentId）から見て、現在表示対象となっている子供（系統）が1つだけ＝一本線
+            const isSingleChild = children.length === 1;
 
             let html = '<div style="display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px; margin-top: 2px;">';
             children.forEach(node => {
@@ -1123,11 +1126,8 @@
                 const color = info.selected ? '#f1c40f' : (info.alive ? '#fff' : '#777');
                 const weight = info.selected ? 'font-weight: bold;' : '';
                 
-                // 親の世代も自分の世代も死んでいる時だけ矢印フラグを立てる
-                let hasArrow = false;
-                if (!parentAlive && !info.alive) {
-                    hasArrow = true;
-                }
+                // 親ノードから自分へ一本線で繋がっている時だけ矢印を表示
+                let hasArrow = isSingleChild;
 
                 const labelBg = info.selected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
 
@@ -1135,9 +1135,9 @@
                     <div style="margin-top: 2px;">
                         <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0;">
                             <!-- 1. 矢印を丸アイコンの左側に配置 -->
-                            ${hasArrow ? '<span style="color: #666; font-weight: bold; flex-shrink: 0; font-size: 12px; margin-right: -2px;">→</span>' : ''}
+                            ${hasArrow ? '<span style="color: #bbb; font-weight: bold; flex-shrink: 0; font-size: 12px; margin-right: -2px;">→</span>' : ''}
                             
-                            <!-- 2. 子世代の丸：絶滅後(alive=false)も opacity や border を変えず、常に鮮やかな元の色で固定 -->
+                            <!-- 2. 子世代の丸：常に鮮やかな元の色で固定 -->
                             <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
                             
                             <!-- 3. テキストラベル -->
@@ -1145,7 +1145,7 @@
                                 <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
                             </div>
                         </div>
-                        ${buildLineageTreeHtml(info.id, info.alive, counts, childrenMap)}
+                        ${buildLineageTreeHtml(node.id, counts, childrenMap)}
                     </div>`;
             });
             html += '</div>';
