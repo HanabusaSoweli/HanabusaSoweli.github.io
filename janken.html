@@ -17,7 +17,7 @@
             overflow: hidden;
         }
         
-        /* アプリ全体を左右に二分する最外レイアウト（家系図OFF時に中央揃えにするため justify-content: center を追加） */
+        /* アプリ全体を左右に二分する最外レイアウト */
         #app-wrapper {
             display: flex;
             gap: 15px;
@@ -52,7 +52,7 @@
             cursor: crosshair;
         }
 
-        /* 中央：ステータスパネルの幅を元のスマートなサイズ（260px）に固定 */
+        /* 中央：ステータスパネル */
         #statusPanel {
             width: 260px;
             height: 480px;
@@ -75,7 +75,7 @@
             text-align: center;
         }
 
-        /* 右側：デフォルトで非表示にするため display: none に設定 */
+        /* 右側：家系図パネル */
         #lineagePanel {
             display: none; /* デフォルトOFF */
             flex: 1;
@@ -218,7 +218,7 @@
             transition: width 0.2s;
         }
 
-        /* 設定パネル全体の余白を削ってタイトに */
+        /* 設定パネル */
         #controls {
             background-color: #333;
             padding: 10px 14px;
@@ -232,14 +232,12 @@
             box-sizing: border-box;
         }
         
-        /* グリッドの隙間を縮小 */
         .control-grid {
             display: flex;
             gap: 15px;
             width: 100%;
             justify-content: flex-start;
         }
-        /* カラム内のパーツ間隔と右側の余白を削減 */
         .control-column {
             display: flex;
             flex-direction: column;
@@ -254,7 +252,6 @@
             padding-right: 0;
         }
 
-        /* スライダーグループの幅をカラム幅いっぱいに追従 */
         .slider-group {
             display: flex;
             flex-direction: column;
@@ -332,7 +329,6 @@
             font-weight: bold;
         }
 
-        /* 家系図トグル用のカスタムスタイル（初期状態をグレーに変更） */
         #toggleLineageBtn {
             background-color: #7f8c8d;
             color: white;
@@ -460,7 +456,6 @@
                         <button class="speed-btn" data-speed="4">4倍</button>
                     </div>
                     
-                    <!-- デフォルトを「非表示」に変更 -->
                     <button id="toggleLineageBtn" class="speed-btn">🌳 家系図: 非表示</button>
                     <button id="clearBtn">クリア</button>
                 </div>
@@ -499,7 +494,7 @@
             </div>
         </div>
 
-        <!-- 一番右側：全体の種の家系図パネル（初期状態で display: none;） -->
+        <!-- 一番右側：全体の種の家系図パネル -->
         <div id="lineagePanel" style="display: none;">
             <h3>🌳 種の家系図 (系統樹)</h3>
             <div id="lineageContent">
@@ -556,7 +551,6 @@
         let selectedCreature = null;
         let lastSelectedCreatureId = null;
 
-        // トグルボタンの処理（初期状態が非表示であることを前提に修正）
         toggleLineageBtn.addEventListener('click', () => {
             if (lineagePanel.style.display === 'none' || lineagePanel.style.display === '') {
                 lineagePanel.style.display = 'flex';
@@ -733,7 +727,7 @@
 
                 const actualN = Math.min(mutationAmount, this.genes[loseAttr]);
                 this.genes[loseAttr] -= actualN;
-                this.genes[gainAttr] += actualN;
+                this.genes[gainAttr] += activeHandIds.length > 1 ? actualN : 0;
 
                 let sum = 0;
                 activeHandIds.forEach(id => sum += (this.genes[id] || 0));
@@ -1052,6 +1046,7 @@
             });
         }
 
+        // --- バグ修正版の家系図更新処理 ---
         function updateLineagePanel() {
             if (lineagePanel.style.display === 'none') return;
 
@@ -1079,20 +1074,17 @@
                 const aliveCount = counts[root.id] || 0;
                 const isSelected = selectedCreature && (getSelectedHighlightMode() === 'pureLineage' ? (root.id === selectedCreature.lineageId) : (root.id.split('-')[0] === selectedCreature.familyId));
                 
-                const isAlive = aliveCount > 0;
-                const dotColor = isAlive ? root.color : '#555';
-                const textColor = isAlive ? '#fff' : '#888';
-                const countColor = isAlive ? '#aaa' : '#666';
-
-                const labelStyle = isSelected 
-                    ? 'color: #f1c40f; font-weight: bold; background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px;' 
-                    : `color: ${textColor};`;
+                // ハイライトおよび生存・絶滅状態に応じたスタイル制御（全体不透明度opacityは絶対に使わない）
+                const labelBg = isSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px; font-weight: bold;' : '';
+                const textColor = aliveCount > 0 ? (isSelected ? '#f1c40f' : '#fff') : '#777';
+                const countColor = aliveCount > 0 ? '#aaa' : '#555';
+                const iconStyle = aliveCount > 0 ? '' : 'opacity: 0.35; border-color: rgba(255,255,255,0.3);';
 
                 html += `
                     <div style="margin-bottom: 10px;">
                         <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0;">
-                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${dotColor}; border: 1px solid ${isAlive ? '#fff' : '#444'}; flex-shrink: 0;"></span>
-                            <span style="${labelStyle}">${root.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
+                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${root.color}; border: 1px solid #fff; flex-shrink: 0; ${iconStyle}"></span>
+                            <span style="${labelBg} color: ${textColor};">${root.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
                         </div>
                         ${buildLineageTreeHtml(root.id, counts, activeNodes)}
                     </div>`;
@@ -1104,25 +1096,22 @@
             const children = Object.values(lineageRegistry).filter(node => node.parentId === parentId && activeNodes.has(node.id));
             if (children.length === 0) return '';
 
-            let html = '<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 12px; border-left: 1px dashed #666; margin-left: 4px;">';
+            let html = '<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px;">';
             children.forEach(node => {
                 const aliveCount = counts[node.id] || 0;
                 const isSelected = selectedCreature && (getSelectedHighlightMode() === 'pureLineage' ? (node.id === selectedCreature.lineageId) : (node.id.split('-')[0] === selectedCreature.familyId));
                 
-                const isAlive = aliveCount > 0;
-                const dotColor = isAlive ? node.color : '#555';
-                const textColor = isAlive ? '#fff' : '#888';
-                const countColor = isAlive ? '#aaa' : '#666';
-
-                const labelStyle = isSelected 
-                    ? 'color: #f1c40f; font-weight: bold; background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px;' 
-                    : `color: ${textColor};`;
+                // ハイライトおよび生存・絶滅状態に応じたスタイル制御（累積を避けるためパーツ個別に設定）
+                const labelBg = isSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px; font-weight: bold;' : '';
+                const textColor = aliveCount > 0 ? (isSelected ? '#f1c40f' : '#fff') : '#777';
+                const countColor = aliveCount > 0 ? '#aaa' : '#555';
+                const iconStyle = aliveCount > 0 ? '' : 'opacity: 0.35; border-color: rgba(255,255,255,0.3);';
 
                 html += `
                     <div>
                         <div style="display: flex; align-items: center; gap: 6px; margin: 2px 0;">
-                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${dotColor}; border: 1px solid ${isAlive ? '#fff' : '#444'}; flex-shrink: 0;"></span>
-                            <span style="${labelStyle}">${node.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${node.color}; border: 1px solid #fff; flex-shrink: 0; ${iconStyle}"></span>
+                            <span style="${labelBg} color: ${textColor};">${node.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
                         </div>
                         ${buildLineageTreeHtml(node.id, counts, activeNodes)}
                     </div>`;
