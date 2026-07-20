@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (系統樹スマートインデント版)</title>
+    <title>じゃんけん生態系シミュレーター (系統樹点線重ね・直列フラット化版)</title>
     <style>
         body {
             margin: 0;
@@ -1105,65 +1105,69 @@
                                 <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
                             </div>
                         </div>
-                        ${buildLineageTreeHtml(info.id, info.alive, counts, childrenMap)}
+                        ${renderSubtree(info.id, info.alive, counts, childrenMap)}
                     </div>`;
             });
             lineageContent.innerHTML = html;
         }
 
-        function buildLineageTreeHtml(parentId, parentAlive, counts, childrenMap) {
+        function renderSubtree(parentId, parentAlive, counts, childrenMap) {
             const children = childrenMap.get(parentId) || [];
             if (children.length === 0) return '';
 
-            let html = '';
+            let html = '<div style="display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px; margin-top: 2px;">';
             children.forEach(node => {
-                const info = getNodeInfo(node, counts);
-                const color = info.selected ? '#f1c40f' : (info.alive ? '#fff' : '#777');
-                const weight = info.selected ? 'font-weight: bold;' : '';
-                
-                const parentChildren = childrenMap.get(node.parentId) || [];
-
-                // 矢印（→）を表示するかどうかのフラグ
-                let hasArrow = false;
-                if (!parentAlive && !info.alive && parentChildren.length === 1) {
-                    hasArrow = true;
-                }
-
-                const labelBg = info.selected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
-
-                // ★ここを修正：hasArrow(矢印表示)の時はインデント（縦線）を作らず、現在と同じ階層に横並びにする
-                if (hasArrow) {
-                    html += `
-                        <div style="margin-top: 2px;">
-                            <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0; position: relative;">
-                                <!-- 縦線の上に重ねてめり込ませる矢印（左にずらさず、直前の縦線の位置に配置） -->
-                                <span style="position: absolute; left: -18px; width: 12px; text-align: center; background: #2c2c2c; color: #666; font-weight: bold; font-size: 11px; z-index: 2;">→</span>
-                                
-                                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
-                                <div style="${labelBg} display: flex; flex-direction: column;">
-                                    <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
-                                </div>
-                            </div>
-                            <!-- インデントを下げずに現在の階層のまま子階層を展開する -->
-                            ${buildLineageTreeHtml(info.id, info.alive, counts, childrenMap)}
-                        </div>`;
-                } else {
-                    // 通常の分岐、または生存個体がいる階層はインデントを1つ下げて（左に縦線を描いて）表示
-                    html += `
-                        <div style="margin-top: 2px;">
-                            <!-- 新しい縦線インデントのコンテナを開く -->
-                            <div style="display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px; margin-top: 2px;">
-                                <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0; position: relative;">
-                                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
-                                    <div style="${labelBg} display: flex; flex-direction: column;">
-                                        <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
-                                    </div>
-                                </div>
-                                ${buildLineageTreeHtml(info.id, info.alive, counts, childrenMap)}
-                            </div>
-                        </div>`;
-                }
+                html += renderNodeBranch(node, parentAlive, counts, childrenMap);
             });
+            html += '</div>';
+            return html;
+        }
+
+        function renderNodeBranch(node, parentAlive, counts, childrenMap) {
+            const info = getNodeInfo(node, counts);
+            const color = info.selected ? '#f1c40f' : (info.alive ? '#fff' : '#777');
+            const weight = info.selected ? 'font-weight: bold;' : '';
+            const parentChildren = childrenMap.get(node.parentId) || [];
+
+            let hasArrow = false;
+            if (!parentAlive && !info.alive && parentChildren.length === 1) {
+                hasArrow = true;
+            }
+
+            const labelBg = info.selected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
+
+            let html = `
+                <div style="margin-top: 2px;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0; position: relative;">
+                        ${hasArrow ? '<span style="position: absolute; left: -18px; width: 12px; text-align: center; background: #2c2c2c; color: #666; font-weight: bold; font-size: 11px; z-index: 2;">→</span>' : ''}
+                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
+                        <div style="${labelBg} display: flex; flex-direction: column;">
+                            <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
+                        </div>
+                    </div>`;
+
+            const nodeChildren = childrenMap.get(node.id) || [];
+            
+            if (nodeChildren.length === 1) {
+                const child = nodeChildren[0];
+                const childInfo = getNodeInfo(child, counts);
+                const isContinuousArrow = (!info.alive && !childInfo.alive);
+
+                if (isContinuousArrow) {
+                    // 一本道（連続する矢印）の場合は、新しいインデント階層を作らずに同じ階層にフラットに直接繋げる
+                    html += renderNodeBranch(child, info.alive, counts, childrenMap);
+                } else {
+                    if (nodeChildren.length > 0) {
+                        html += renderSubtree(node.id, info.alive, counts, childrenMap);
+                    }
+                }
+            } else {
+                if (nodeChildren.length > 0) {
+                    html += renderSubtree(node.id, info.alive, counts, childrenMap);
+                }
+            }
+
+            html += `</div>`;
             return html;
         }
 
