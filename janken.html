@@ -1078,13 +1078,21 @@
             roots.forEach(root => {
                 const aliveCount = counts[root.id] || 0;
                 const isSelected = selectedCreature && (getSelectedHighlightMode() === 'pureLineage' ? (root.id === selectedCreature.lineageId) : (root.id.split('-')[0] === selectedCreature.familyId));
-                const labelStyle = isSelected ? 'color: #f1c40f; font-weight: bold; background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px;' : '';
-                const nodeOpacity = aliveCount > 0 ? '1.0' : '0.5';
+                
+                const isAlive = aliveCount > 0;
+                const dotColor = isAlive ? root.color : '#555';
+                const textColor = isAlive ? '#fff' : '#888';
+                const countColor = isAlive ? '#aaa' : '#666';
+
+                const labelStyle = isSelected 
+                    ? 'color: #f1c40f; font-weight: bold; background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px;' 
+                    : `color: ${textColor};`;
+
                 html += `
                     <div style="margin-bottom: 10px;">
-                        <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0; opacity: ${nodeOpacity};">
-                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${root.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
-                            <span style="${labelStyle}">${root.label} <span style="color: #aaa; font-size: 10px;">(${aliveCount}体)</span></span>
+                        <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0;">
+                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${dotColor}; border: 1px solid ${isAlive ? '#fff' : '#444'}; flex-shrink: 0;"></span>
+                            <span style="${labelStyle}">${root.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
                         </div>
                         ${buildLineageTreeHtml(root.id, counts, activeNodes)}
                     </div>`;
@@ -1100,13 +1108,21 @@
             children.forEach(node => {
                 const aliveCount = counts[node.id] || 0;
                 const isSelected = selectedCreature && (getSelectedHighlightMode() === 'pureLineage' ? (node.id === selectedCreature.lineageId) : (node.id.split('-')[0] === selectedCreature.familyId));
-                const labelStyle = isSelected ? 'color: #f1c40f; font-weight: bold; background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px;' : '';
-                const nodeOpacity = aliveCount > 0 ? '1.0' : '0.5';
+                
+                const isAlive = aliveCount > 0;
+                const dotColor = isAlive ? node.color : '#555';
+                const textColor = isAlive ? '#fff' : '#888';
+                const countColor = isAlive ? '#aaa' : '#666';
+
+                const labelStyle = isSelected 
+                    ? 'color: #f1c40f; font-weight: bold; background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px;' 
+                    : `color: ${textColor};`;
+
                 html += `
                     <div>
-                        <div style="display: flex; align-items: center; gap: 6px; margin: 2px 0; opacity: ${nodeOpacity};">
-                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${node.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
-                            <span style="${labelStyle}">${node.label} <span style="color: #aaa; font-size: 10px;">(${aliveCount}体)</span></span>
+                        <div style="display: flex; align-items: center; gap: 6px; margin: 2px 0;">
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${dotColor}; border: 1px solid ${isAlive ? '#fff' : '#444'}; flex-shrink: 0;"></span>
+                            <span style="${labelStyle}">${node.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
                         </div>
                         ${buildLineageTreeHtml(node.id, counts, activeNodes)}
                     </div>`;
