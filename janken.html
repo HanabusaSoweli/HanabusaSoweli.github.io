@@ -551,7 +551,7 @@
         let lineageRegistry = {};
         let selectedCreature = null;
         let lastSelectedCreatureId = null;
-        let frameCount = 0; // ★ 描画負荷軽減用のフレームカウンターを導入
+        let frameCount = 0; 
 
         toggleLineageBtn.addEventListener('click', () => {
             if (lineagePanel.style.display === 'none' || lineagePanel.style.display === '') {
@@ -559,7 +559,7 @@
                 toggleLineageBtn.textContent = '🌳 家系図: 表示中';
                 toggleLineageBtn.style.backgroundColor = '#27ae60';
                 toggleLineageBtn.style.borderColor = '#1e8449';
-                updateLineagePanel(); // 表示に切り替えた瞬間に1度更新する
+                updateLineagePanel(); 
             } else {
                 lineagePanel.style.display = 'none';
                 toggleLineageBtn.textContent = '🌳 家系図: 非表示';
@@ -734,7 +734,8 @@
 
                 let sum = 0;
                 activeHandIds.forEach(id => sum += (this.genes[id] || 0));
-                if (sum > 0) activeHandIds.forEach(id => this.genes[id] = (c.genes[id] || 0) / sum);
+                // ★ 修正：c.genes[id] になっていた誤記を this.genes[id] に修正しました
+                if (sum > 0) activeHandIds.forEach(id => this.genes[id] = (this.genes[id] || 0) / sum);
             }
         }
 
@@ -778,7 +779,7 @@
             document.querySelectorAll('.delete-hand-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     if (hands.length <= 3) {
-                        alert("すくみが破綻しないよう、手は最低3つ必要です！");
+                        alert("すくみが破綻しないよう、手は最低 3 つ必要です！");
                         return;
                     }
                     const targetId = btn.dataset.id;
@@ -963,7 +964,7 @@
 
         clearBtn.addEventListener('click', () => {
             creatures = []; selectedCreature = null; lastSelectedCreatureId = null; 
-            familyCounter = 0; creatureIdCounter = 0; mutationCounter = 0; frameCount = 0; // カウンターをリセット
+            familyCounter = 0; creatureIdCounter = 0; mutationCounter = 0; frameCount = 0; 
             lineageRegistry = {};
             lineageContent.innerHTML = `<div class="status-placeholder">画面をクリックして<br>生き物を配置すると<br>ここに系統樹（家系図）が<br>リアルタイムに形成されます。</div>`;
         });
@@ -1124,7 +1125,7 @@
         }
 
         function loop() {
-            frameCount++; // ★ フレームを加算
+            frameCount++; 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             currentCrowdRadius = parseFloat(document.getElementById('crowdRadius').value) || 50;
             currentCrowdLimit = parseFloat(document.getElementById('crowdLimit').value) || 20;
@@ -1184,7 +1185,6 @@
             countBadge.textContent = creatures.length;
             updateStatusPanel();
 
-            // ★ 30フレームに1度だけ家系図のDOMツリーを更新（劇的な負荷軽減）
             if (frameCount % 30 === 0) {
                 updateLineagePanel();
             }
