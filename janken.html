@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (系統樹点線重ね版)</title>
+    <title>じゃんけん生態系シミュレーター (系統樹スマートインデント版)</title>
     <style>
         body {
             margin: 0;
@@ -1115,15 +1115,15 @@
             const children = childrenMap.get(parentId) || [];
             if (children.length === 0) return '';
 
-            let html = '<div style="display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px; margin-top: 2px;">';
+            let html = '';
             children.forEach(node => {
                 const info = getNodeInfo(node, counts);
-
                 const color = info.selected ? '#f1c40f' : (info.alive ? '#fff' : '#777');
                 const weight = info.selected ? 'font-weight: bold;' : '';
                 
                 const parentChildren = childrenMap.get(node.parentId) || [];
 
+                // 矢印（→）を表示するかどうかのフラグ
                 let hasArrow = false;
                 if (!parentAlive && !info.alive && parentChildren.length === 1) {
                     hasArrow = true;
@@ -1131,26 +1131,39 @@
 
                 const labelBg = info.selected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
 
-                html += `
-                    <div style="margin-top: 2px;">
-                        <!-- 行コンテナに position: relative を追加 -->
-                        <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0; position: relative;">
-                            
-                            <!-- 矢印を絶対配置（left: -18px）にし、背景色を敷いて点線にめり込ませる -->
-                            ${hasArrow ? '<span style="position: absolute; left: -18px; width: 12px; text-align: center; background: #2c2c2c; color: #666; font-weight: bold; font-size: 11px; z-index: 2;">→</span>' : ''}
-                            
-                            <!-- 子世代の丸 -->
-                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
-                            
-                            <!-- テキストラベル -->
-                            <div style="${labelBg} display: flex; flex-direction: column;">
-                                <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
+                // ★ここを修正：hasArrow(矢印表示)の時はインデント（縦線）を作らず、現在と同じ階層に横並びにする
+                if (hasArrow) {
+                    html += `
+                        <div style="margin-top: 2px;">
+                            <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0; position: relative;">
+                                <!-- 縦線の上に重ねてめり込ませる矢印（左にずらさず、直前の縦線の位置に配置） -->
+                                <span style="position: absolute; left: -18px; width: 12px; text-align: center; background: #2c2c2c; color: #666; font-weight: bold; font-size: 11px; z-index: 2;">→</span>
+                                
+                                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
+                                <div style="${labelBg} display: flex; flex-direction: column;">
+                                    <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
+                                </div>
                             </div>
-                        </div>
-                        ${buildLineageTreeHtml(info.id, info.alive, counts, childrenMap)}
-                    </div>`;
+                            <!-- インデントを下げずに現在の階層のまま子階層を展開する -->
+                            ${buildLineageTreeHtml(info.id, info.alive, counts, childrenMap)}
+                        </div>`;
+                } else {
+                    // 通常の分岐、または生存個体がいる階層はインデントを1つ下げて（左に縦線を描いて）表示
+                    html += `
+                        <div style="margin-top: 2px;">
+                            <!-- 新しい縦線インデントのコンテナを開く -->
+                            <div style="display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px; margin-top: 2px;">
+                                <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0; position: relative;">
+                                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
+                                    <div style="${labelBg} display: flex; flex-direction: column;">
+                                        <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
+                                    </div>
+                                </div>
+                                ${buildLineageTreeHtml(info.id, info.alive, counts, childrenMap)}
+                            </div>
+                        </div>`;
+                }
             });
-            html += '</div>';
             return html;
         }
 
