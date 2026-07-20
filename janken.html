@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (系統樹スマートインデント版)</title>
+    <title>じゃんけん生態系シミュレーター (系統樹ツリー構造版)</title>
     <style>
         body {
             margin: 0;
@@ -1105,106 +1105,37 @@
                                 <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
                             </div>
                         </div>
-                        ${buildLineageTreeHtml(info.id, info.alive, counts, childrenMap)}
+                        ${buildLineageTreeHtml(info.id, counts, childrenMap)}
                     </div>`;
             });
             lineageContent.innerHTML = html;
         }
 
-        // 指定したノードから下へ向かって、すべて「生存個体なし ＆ 1本道（子要素が1つ）」のグループがどこまで続くかチェックするヘルパー関数
-        function getContinuousDeadSingleLine(nodeId, counts, childrenMap) {
-            let list = [];
-            let currentId = nodeId;
-            while (true) {
-                const children = childrenMap.get(currentId) || [];
-                // 子がちょうど1つ、かつその子が死んでいる場合のみ一本道としてカウント
-                if (children.length === 1) {
-                    const child = children[0];
-                    const childAlive = (counts[child.id] || 0) > 0;
-                    if (!childAlive) {
-                        list.push(child);
-                        currentId = child.id;
-                        continue;
-                    }
-                }
-                break;
-            }
-            return list;
-        }
-
-        function buildLineageTreeHtml(parentId, parentAlive, counts, childrenMap) {
+        // 🌟 正しい階層ツリー構造の再帰レンダリング関数
+        function buildLineageTreeHtml(parentId, counts, childrenMap) {
             const children = childrenMap.get(parentId) || [];
             if (children.length === 0) return '';
 
             let html = '';
-            
-            // すでにこの階層ですでに処理したノードをスキップするためのセット
-            const processedNodeIds = new Set();
-
             children.forEach(node => {
-                if (processedNodeIds.has(node.id)) return;
-
                 const info = getNodeInfo(node, counts);
                 const color = info.selected ? '#f1c40f' : (info.alive ? '#fff' : '#777');
                 const weight = info.selected ? 'font-weight: bold;' : '';
                 const labelBg = info.selected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
 
-                // このノードを起点として、下へ続く「すべて死んでいて1本道」の連続グループを取得
-                const deadSingleChain = (!info.alive) ? getContinuousDeadSingleLine(node.id, counts, childrenMap) : [];
-
-                if (deadSingleChain.length > 0) {
-                    // 🌟 パターンA: 最初の一つ目（node）は通常のインデント（縦線の中）に置き、親との繋がりを見せる！
-                    html += `
-                        <div style="margin-top: 2px;">
-                            <div style="display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px; margin-top: 2px;">
-                                <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0; position: relative;">
-                                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
-                                    <div style="${labelBg} display: flex; flex-direction: column;">
-                                        <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
-                                    </div>
-                                </div>`;
-
-                    // 🌟 パターンB: 2個目以降（deadSingleChainに含まれるもの）は、インデントを増やさず「→」付きで左に詰めて直列に並べる
-                    deadSingleChain.forEach(chainedNode => {
-                        processedNodeIds.add(chainedNode.id); // 次のループで重複描画しないようにマーク
-                        const cInfo = getNodeInfo(chainedNode, counts);
-                        const cColor = cInfo.selected ? '#f1c40f' : '#777';
-                        const cWeight = cInfo.selected ? 'font-weight: bold;' : '';
-                        const cLabelBg = cInfo.selected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
-
-                        html += `
-                                <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0; position: relative;">
-                                    <span style="position: absolute; left: -18px; width: 12px; text-align: center; background: #2c2c2c; color: #666; font-weight: bold; font-size: 11px; z-index: 2;">→</span>
-                                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${cInfo.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
-                                    <div style="${cLabelBg} display: flex; flex-direction: column;">
-                                        <div style="line-height: 1.4;"><span style="color: ${cColor}; ${cWeight} white-space: nowrap;">${cInfo.label}</span></div>
-                                    </div>
-                                </div>`;
-                    });
-
-                    // 最後に、チェーンの最下層からさらに生える子孫たちを再帰的に呼び出す
-                    const lastChainNodeId = deadSingleChain[deadSingleChain.length - 1].id;
-                    html += buildLineageTreeHtml(lastChainNodeId, false, counts, childrenMap);
-
-                    html += `
-                            </div>
-                        </div>`;
-
-                } else {
-                    // 通常の分岐、または生存個体がいる場合はそのままインデント階層を展開
-                    html += `
-                        <div style="margin-top: 2px;">
-                            <div style="display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px; margin-top: 2px;">
-                                <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0; position: relative;">
-                                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
-                                    <div style="${labelBg} display: flex; flex-direction: column;">
-                                        <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
-                                    </div>
+                html += `
+                    <div style="margin-top: 3px;">
+                        <div style="display: flex; flex-direction: column; gap: 4px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px;">
+                            <div style="display: flex; align-items: center; gap: 6px; margin: 2px 0;">
+                                <span style="color: #888; font-weight: bold; font-size: 11px;">→</span>
+                                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
+                                <div style="${labelBg} display: flex; flex-direction: column;">
+                                    <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
                                 </div>
-                                ${buildLineageTreeHtml(info.id, info.alive, counts, childrenMap)}
                             </div>
-                        </div>`;
-                }
+                            ${buildLineageTreeHtml(node.id, counts, childrenMap)}
+                        </div>
+                    </div>`;
             });
             return html;
         }
