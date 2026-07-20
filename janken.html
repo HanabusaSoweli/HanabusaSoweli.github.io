@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (系統樹線修正版)</title>
+    <title>じゃんけん生態系シミュレーター (系統樹ブラッシュアップ版)</title>
     <style>
         body {
             margin: 0;
@@ -1031,7 +1031,6 @@
             });
         }
 
-        // ノード単体の描画用ステータスを取得する関数に変更（圧縮処理の撤廃）
         function getNodeInfo(node, counts) {
             const aliveCount = counts[node.id] || 0;
             const isSelected = selectedCreature && (
@@ -1097,12 +1096,12 @@
                 const color = info.selected ? '#f1c40f' : (info.alive ? '#fff' : '#777');
                 const weight = info.selected ? 'font-weight: bold;' : '';
                 const labelBg = info.selected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
-                const iconStyle = info.alive ? '' : 'opacity: 0.35; border-color: rgba(255,255,255,0.3);';
 
                 html += `
                     <div style="margin-bottom: 12px;">
-                        <div style="display: flex; align-items: flex-start; gap: 6px; margin: 4px 0;">
-                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0; margin-top: 4px; ${iconStyle}"></span>
+                        <div style="display: flex; align-items: center; gap: 6px; margin: 4px 0;">
+                            <!-- ルート（最上位親）の丸：絶滅時も鮮やかな色を100%維持 -->
+                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
                             <div style="${labelBg} display: flex; flex-direction: column;">
                                 <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
                             </div>
@@ -1117,7 +1116,6 @@
             const children = childrenMap.get(parentId) || [];
             if (children.length === 0) return '';
 
-            // 1体しかいなくても必ずこのコンテナを通るため、左側の破線（border-left）が維持されます
             let html = '<div style="display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px; margin-top: 2px;">';
             children.forEach(node => {
                 const info = getNodeInfo(node, counts);
@@ -1125,21 +1123,26 @@
                 const color = info.selected ? '#f1c40f' : (info.alive ? '#fff' : '#777');
                 const weight = info.selected ? 'font-weight: bold;' : '';
                 
-                // 親の世代(parentAlive)も自分の世代(info.alive)も死んでいる時だけ矢印を表示
-                let prefix = '';
+                // 親の世代も自分の世代も死んでいる時だけ矢印フラグを立てる
+                let hasArrow = false;
                 if (!parentAlive && !info.alive) {
-                    prefix = '<span style="color: #555; margin-right: 2px;">→</span>';
+                    hasArrow = true;
                 }
 
                 const labelBg = info.selected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
-                const iconStyle = info.alive ? '' : 'opacity: 0.35; border-color: rgba(255,255,255,0.3);';
 
                 html += `
                     <div style="margin-top: 2px;">
-                        <div style="display: flex; align-items: flex-start; gap: 6px; margin: 3px 0;">
-                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0; margin-top: 4px; ${iconStyle}"></span>
+                        <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0;">
+                            <!-- 1. 矢印を丸アイコンの左側に配置 -->
+                            ${hasArrow ? '<span style="color: #666; font-weight: bold; flex-shrink: 0; font-size: 12px; margin-right: -2px;">→</span>' : ''}
+                            
+                            <!-- 2. 子世代の丸：絶滅後(alive=false)も opacity や border を変えず、常に鮮やかな元の色で固定 -->
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
+                            
+                            <!-- 3. テキストラベル -->
                             <div style="${labelBg} display: flex; flex-direction: column;">
-                                <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${prefix}${info.label}</span></div>
+                                <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
                             </div>
                         </div>
                         ${buildLineageTreeHtml(info.id, info.alive, counts, childrenMap)}
