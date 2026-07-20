@@ -471,7 +471,7 @@
             <div id="info">
                 【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置 / 個体を選択</strong>してください。<br>
                 現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
-                <span style="color: #e74c3c; font-weight: bold;">※ 指定の判定半径内に制限以上の個体が高密度に集まると、その瞬間「即死」して消滅します。</span>
+                <span style="color: #e74c3c; font-weight: bold;">※ 指定 of 判定半径内に制限以上の個体が高密度に集まると、その瞬間「即死」して消滅します。</span>
             </div>
         </div>
 
@@ -1150,12 +1150,19 @@
             const children = childrenMap.get(parentId) || [];
             if (children.length === 0) return '';
 
-            // 【修正】縦線を削除し、インデントの余白（padding-left）を設定
-            let html = '<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 20px; margin-top: 2px;">';
+            // 【条件追加】親ノードが絶滅している（countsが0またはundefined）かを判定
+            const isParentExtinct = (counts[parentId] || 0) === 0;
+
+            // 絶滅している場合は縦破線を消し（border:none）、生存している場合は元の縦破線（｜）を表示
+            let borderStyle = isParentExtinct 
+                ? 'border-left: none; padding-left: 20px;' 
+                : 'border-left: 1px dashed #555; padding-left: 12px; margin-left: 5px;';
+
+            let html = `<div style="display: flex; flex-direction: column; gap: 4px; ${borderStyle} margin-top: 2px;">`;
+            
             children.forEach(node => {
                 const info = getCompressedNodeInfo(node, counts, childrenMap);
 
-                // 【修正】子階層の要素は、先頭（idx === 0）であっても必ず「→」から始まるように変更
                 const labelHtml = info.labels.map((l, idx) => {
                     const textColor = l.selected ? '#f1c40f' : (l.alive ? '#fff' : '#777');
                     const weight = l.selected ? 'font-weight: bold;' : '';
@@ -1163,7 +1170,14 @@
 
                     const dotHtml = `<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${l.color}; border: 1px solid #fff; margin-right: 2px; flex-shrink: 0; ${dotOpacity}"></span>`;
 
-                    return `<div style="display: flex; align-items: center; line-height: 1.4; margin: 1px 0;"><span style="color: #555; flex-shrink: 0;">→</span>${dotHtml}<span style="color: ${textColor}; ${weight} white-space: nowrap;">${l.text}</span></div>`;
+                    // 【条件追加】親ノードが絶滅している、または直線上の変異遷移（idx > 0）であれば矢印（→）を付ける
+                    const showArrow = isParentExtinct || idx > 0;
+
+                    if (showArrow) {
+                        return `<div style="display: flex; align-items: center; line-height: 1.4; margin: 1px 0;"><span style="color: #555; flex-shrink: 0;">→</span>${dotHtml}<span style="color: ${textColor}; ${weight} white-space: nowrap;">${l.text}</span></div>`;
+                    } else {
+                        return `<div style="display: flex; align-items: center; line-height: 1.4; margin: 1px 0;">${dotHtml}<span style="color: ${textColor}; ${weight} white-space: nowrap;">${l.text}</span></div>`;
+                    }
                 }).join('');
 
                 const labelBg = info.hasSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
