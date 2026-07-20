@@ -17,7 +17,6 @@
             overflow: hidden;
         }
         
-        /* アプリ全体を左右に二分する最外レイアウト */
         #app-wrapper {
             display: flex;
             gap: 15px;
@@ -28,7 +27,6 @@
             justify-content: center;
         }
 
-        /* 左側エリア：Canvasとステータスがぴったり収まる幅(1070px)に固定 */
         #left-area {
             flex: 0 0 1070px;
             display: flex;
@@ -37,7 +35,6 @@
             min-width: 0;
         }
         
-        /* 左側エリア内の下部（Canvas と ステータスパネル） */
         #main-area {
             display: flex;
             gap: 10px;
@@ -52,7 +49,6 @@
             cursor: crosshair;
         }
 
-        /* 中央：ステータスパネル */
         #statusPanel {
             width: 260px;
             height: 480px;
@@ -75,9 +71,8 @@
             text-align: center;
         }
 
-        /* 右側：家系図パネル */
         #lineagePanel {
-            display: none; /* デフォルトOFF */
+            display: none; 
             flex: 1;
             min-width: 360px;
             background-color: #2c2c2c;
@@ -104,7 +99,6 @@
             padding-right: 4px;
         }
         
-        /* ハイライト切り替え用のUI */
         #highlightConfig {
             background-color: #1e1e1e;
             border-radius: 6px;
@@ -160,7 +154,6 @@
             font-weight: bold;
         }
 
-        /* ブーストボタン */
         #boostBtn {
             width: 100%;
             padding: 8px;
@@ -190,7 +183,6 @@
             min-height: 0; 
         }
 
-        /* 遺伝子バー */
         .gene-bar-container {
             display: flex;
             flex-direction: column;
@@ -218,7 +210,6 @@
             transition: width 0.2s;
         }
 
-        /* 設定パネル */
         #controls {
             background-color: #333;
             padding: 10px 14px;
@@ -363,22 +354,16 @@
 <body>
 
     <div id="app-wrapper">
-        
-        <!-- 左側メイン領域 -->
         <div id="left-area">
             <h2 style="margin: 0; text-align: center;">じゃんけん生態系シミュレーター</h2>
             
-            <!-- コントロールパネル -->
             <div id="controls">
                 <div class="control-grid">
-                    
-                    <!-- カラム1: 手のマスターリスト管理 -->
                     <div class="control-column" style="width: 250px;">
                         <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">✋ 手のマスターリスト</h4>
                         <div id="handListContainer" style="display: flex; flex-direction: column; gap: 4px; height: 110px; overflow-y: auto; background: #1e1e1e; padding: 6px; border-radius: 4px; border: 1px solid #444;"></div>
                         <button id="showAddHandFormBtn" style="margin-top: 6px; font-size: 11px; padding: 5px; background: #3498db; color: #fff; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold;">＋ 新しい手を追加</button>
                         
-                        <!-- 手の追加用フォーム -->
                         <div id="addHandForm" style="display: none; background: #2c2c2c; border: 2px solid #555; padding: 10px; border-radius: 6px; font-size: 11px; flex-direction: column; gap: 8px; position: absolute; z-index: 20; width: 230px; top: 10px; left: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.6);">
                             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 4px;">
                                 <strong style="color: #3498db;">🖐️ 手の追加登録</strong>
@@ -396,13 +381,11 @@
                         </div>
                     </div>
 
-                    <!-- カラム2: 誕生時の初期遺伝子比率 -->
                     <div class="control-column" id="dynamicSlidersColumn" style="width: 250px;">
                         <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">🧬 誕生時の初期遺伝子比率</h4>
                         <div id="dynamicSlidersContainer" style="display: flex; flex-direction: column; gap: 6px; height: 140px; overflow-y: auto; padding-right: 5px;"></div>
                     </div>
 
-                    <!-- カラム3: 環境・進化・密度パラメータ -->
                     <div class="control-column" style="width: 270px;">
                         <h4 style="margin: 0 0 6px 0; color: #f1c40f; font-size: 13px;">⚙️ 環境・シミュレーション設定</h4>
                         <div style="display: flex; flex-direction: column; gap: 6px; height: 140px; overflow-y: auto; padding-right: 5px;">
@@ -461,11 +444,9 @@
                 </div>
             </div>
 
-            <!-- シミュレーションメインエリア -->
             <div id="main-area">
                 <canvas id="simCanvas" width="800" height="480"></canvas>
                 
-                <!-- 詳細パネル -->
                 <div id="statusPanel">
                     <h3>🧬 個体ステータス</h3>
                     <div id="highlightConfig">
@@ -494,7 +475,6 @@
             </div>
         </div>
 
-        <!-- 一番右側：全体の種の家系図パネル -->
         <div id="lineagePanel" style="display: none;">
             <h3>🌳 種の家系図 (系統樹)</h3>
             <div id="lineageContent">
@@ -503,7 +483,6 @@
                 </div>
             </div>
         </div>
-
     </div>
 
     <script>
@@ -734,7 +713,6 @@
 
                 let sum = 0;
                 activeHandIds.forEach(id => sum += (this.genes[id] || 0));
-                // ★ 修正：c.genes[id] になっていた誤記を this.genes[id] に修正しました
                 if (sum > 0) activeHandIds.forEach(id => this.genes[id] = (this.genes[id] || 0) / sum);
             }
         }
@@ -1053,6 +1031,7 @@
             });
         }
 
+        // ★大幅に高速化した家系図パネル更新関数
         function updateLineagePanel() {
             if (lineagePanel.style.display === 'none') return;
 
@@ -1068,7 +1047,22 @@
                 }
             });
 
-            const roots = Object.values(lineageRegistry).filter(node => node.parentId === null && activeNodes.has(node.id));
+            // ハッシュマップ（Map）を作り、親子関係をO(1)で引けるように事前インデックス化
+            const childrenMap = new Map();
+            const roots = [];
+
+            Object.values(lineageRegistry).forEach(node => {
+                if (!activeNodes.has(node.id)) return; // 生きていない系統のデータは完全スルー
+                
+                if (node.parentId === null) {
+                    roots.push(node);
+                } else {
+                    if (!childrenMap.has(node.parentId)) {
+                        childrenMap.set(node.parentId, []);
+                    }
+                    childrenMap.get(node.parentId).push(node);
+                }
+            });
 
             if (roots.length === 0) {
                 lineageContent.innerHTML = `<div class="status-placeholder">画面をクリックして<br>生き物を配置すると<br>ここに系統樹（家系図）が<br>リアルタイムに形成されます。</div>`;
@@ -1091,14 +1085,15 @@
                             <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${root.color}; border: 1px solid #fff; flex-shrink: 0; ${iconStyle}"></span>
                             <span style="${labelBg} color: ${textColor};">${root.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
                         </div>
-                        ${buildLineageTreeHtml(root.id, counts, activeNodes)}
+                        ${buildLineageTreeHtml(root.id, counts, childrenMap)}
                     </div>`;
             });
             lineageContent.innerHTML = html;
         }
 
-        function buildLineageTreeHtml(parentId, counts, activeNodes) {
-            const children = Object.values(lineageRegistry).filter(node => node.parentId === parentId && activeNodes.has(node.id));
+        // 高速化に対応したツリー構造生成（childrenMapを受け取って一瞬で処理）
+        function buildLineageTreeHtml(parentId, counts, childrenMap) {
+            const children = childrenMap.get(parentId) || [];
             if (children.length === 0) return '';
 
             let html = '<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px;">';
@@ -1117,7 +1112,7 @@
                             <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${node.color}; border: 1px solid #fff; flex-shrink: 0; ${iconStyle}"></span>
                             <span style="${labelBg} color: ${textColor};">${node.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
                         </div>
-                        ${buildLineageTreeHtml(node.id, counts, activeNodes)}
+                        ${buildLineageTreeHtml(node.id, counts, childrenMap)}
                     </div>`;
             });
             html += '</div>';
