@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (家系図最適化版)</title>
+    <title>じゃんけん生態系シミュレーター (家系図・絶滅集約版)</title>
     <style>
         body {
             margin: 0;
@@ -1031,7 +1031,7 @@
             });
         }
 
-        // ★一本道の系統（枝分かれしていない世代）を1行に集約するための情報を計算する関数
+        // ★一本道の系統のうち【絶滅している世代だけ】を右側に連結する関数
         function getCompressedNodeInfo(startNode, counts, childrenMap) {
             let current = startNode;
             let labels = [];
@@ -1050,7 +1050,6 @@
                 );
                 if (isSelected) hasSelected = true;
 
-                // 生存数が1以上のときだけ個体数を表示してテキストをスッキリさせる
                 let labelText = current.label;
                 if (aliveCount > 0) {
                     labelText += ` (${aliveCount}体)`;
@@ -1063,17 +1062,18 @@
                 });
 
                 const children = childrenMap.get(current.id) || [];
-                // 子ノードが1つ＝枝分かれしていない一本道なので、テキストを連結するため次の世代へループを回す
-                if (children.length === 1) {
+                
+                // 【条件変更】一本道（子ノードが1つ）かつ、このノード自身が「絶滅している(0体)」場合のみ右に連結する
+                if (children.length === 1 && aliveCount === 0) {
                     current = children[0];
                 } else {
-                    // 分岐しているか、あるいは末端に達した場合はここでストップ
+                    // 枝分かれしている、末端に達した、あるいは「現在生き残っている」場合は連結を止め、インデントを下げるためにブレイク
                     break;
                 }
             }
 
             return {
-                lastNodeId: current.id, // 次の階層（分岐先）の親となるノードID
+                lastNodeId: current.id, // 次の階層の展開元となるノードID
                 labels: labels,
                 color: color,
                 hasSelected: hasSelected,
@@ -1081,7 +1081,6 @@
             };
         }
 
-        // ★高速化＋一本道連結に対応した家系図パネル更新関数
         function updateLineagePanel() {
             if (lineagePanel.style.display === 'none') return;
 
@@ -1122,7 +1121,6 @@
             roots.forEach(root => {
                 const info = getCompressedNodeInfo(root, counts, childrenMap);
                 
-                // 集約されたラベル配列を「 → 」で連結したHTMLを構築
                 const labelHtml = info.labels.map(l => {
                     const color = l.selected ? '#f1c40f' : (l.alive ? '#fff' : '#777');
                     const weight = l.selected ? 'font-weight: bold;' : '';
@@ -1144,7 +1142,6 @@
             lineageContent.innerHTML = html;
         }
 
-        // ★高速化＋一本道連結に対応した下層ツリー構造生成
         function buildLineageTreeHtml(parentId, counts, childrenMap) {
             const children = childrenMap.get(parentId) || [];
             if (children.length === 0) return '';
