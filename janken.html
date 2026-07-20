@@ -301,12 +301,12 @@
             display: flex;
             align-items: center;
             gap: 6px;
-        }
-        #speed-control span {
-            font-size: 13px;
-            font-weight: bold;
-            margin-right: 6px;
-            color: #bbb;
+            span {
+                font-size: 13px;
+                font-weight: bold;
+                margin-right: 6px;
+                color: #bbb;
+            }
         }
         .speed-btn {
             background-color: #444;
@@ -547,6 +547,7 @@
 
         let familyCounter = 0;
         let creatureIdCounter = 0;
+        let mutationCounter = 0; // ★ 変異専用の独立カウンターを新設
         let lineageRegistry = {};
         let selectedCreature = null;
         let lastSelectedCreatureId = null;
@@ -959,7 +960,9 @@
         });
 
         clearBtn.addEventListener('click', () => {
-            creatures = []; selectedCreature = null; lastSelectedCreatureId = null; familyCounter = 0; creatureIdCounter = 0; lineageRegistry = {};
+            creatures = []; selectedCreature = null; lastSelectedCreatureId = null; 
+            familyCounter = 0; creatureIdCounter = 0; mutationCounter = 0; // ★ 変異カウンターもここでリセット
+            lineageRegistry = {};
         });
 
         function playJanken(handId1, handId2) {
@@ -1046,7 +1049,6 @@
             });
         }
 
-        // --- バグ修正版の家系図更新処理 ---
         function updateLineagePanel() {
             if (lineagePanel.style.display === 'none') return;
 
@@ -1074,7 +1076,6 @@
                 const aliveCount = counts[root.id] || 0;
                 const isSelected = selectedCreature && (getSelectedHighlightMode() === 'pureLineage' ? (root.id === selectedCreature.lineageId) : (root.id.split('-')[0] === selectedCreature.familyId));
                 
-                // ハイライトおよび生存・絶滅状態に応じたスタイル制御（全体不透明度opacityは絶対に使わない）
                 const labelBg = isSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px; font-weight: bold;' : '';
                 const textColor = aliveCount > 0 ? (isSelected ? '#f1c40f' : '#fff') : '#777';
                 const countColor = aliveCount > 0 ? '#aaa' : '#555';
@@ -1101,7 +1102,6 @@
                 const aliveCount = counts[node.id] || 0;
                 const isSelected = selectedCreature && (getSelectedHighlightMode() === 'pureLineage' ? (node.id === selectedCreature.lineageId) : (node.id.split('-')[0] === selectedCreature.familyId));
                 
-                // ハイライトおよび生存・絶滅状態に応じたスタイル制御（累積を避けるためパーツ個別に設定）
                 const labelBg = isSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px; font-weight: bold;' : '';
                 const textColor = aliveCount > 0 ? (isSelected ? '#f1c40f' : '#fff') : '#777';
                 const countColor = aliveCount > 0 ? '#aaa' : '#555';
@@ -1156,9 +1156,18 @@
                         if (Math.random() < (parseFloat(mutRateSlider.value) / 100)) {
                             const maxAmt = parseFloat(mutAmtSlider.value);
                             clone.mutate((maxAmt > 1 ? 1 + Math.random() * (maxAmt - 1) : 1) / 100); 
+                            
                             const oldLineageId = c.lineageId;
-                            clone.lineageId = `${c.lineageId}-m${clone.id}`;
-                            lineageRegistry[clone.lineageId] = { id: clone.lineageId, parentId: oldLineageId, label: `変異 #${clone.id}`, color: getCreatureColorString(clone.genes) };
+                            mutationCounter++; // ★ 変異回数をインクリメント
+                            
+                            // 系統IDと家系図ラベルを、個体の通算数(id)から独立した「変異カウンター」を基に生成
+                            clone.lineageId = `${c.lineageId}-m${mutationCounter}`;
+                            lineageRegistry[clone.lineageId] = { 
+                                id: clone.lineageId, 
+                                parentId: oldLineageId, 
+                                label: `変異 #${mutationCounter}`, 
+                                color: getCreatureColorString(clone.genes) 
+                            };
                         }
                         nextCreatures.push(clone);
                     }
