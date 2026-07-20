@@ -1150,10 +1150,12 @@
             const children = childrenMap.get(parentId) || [];
             if (children.length === 0) return '';
 
-            let html = '<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px; margin-top: 2px;">';
+            // 【修正】縦線を削除し、インデントの余白（padding-left）を設定
+            let html = '<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 20px; margin-top: 2px;">';
             children.forEach(node => {
                 const info = getCompressedNodeInfo(node, counts, childrenMap);
 
+                // 【修正】子階層の要素は、先頭（idx === 0）であっても必ず「→」から始まるように変更
                 const labelHtml = info.labels.map((l, idx) => {
                     const textColor = l.selected ? '#f1c40f' : (l.alive ? '#fff' : '#777');
                     const weight = l.selected ? 'font-weight: bold;' : '';
@@ -1161,11 +1163,7 @@
 
                     const dotHtml = `<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${l.color}; border: 1px solid #fff; margin-right: 2px; flex-shrink: 0; ${dotOpacity}"></span>`;
 
-                    if (idx === 0) {
-                        return `<div style="display: flex; align-items: center; line-height: 1.4; margin: 1px 0;">${dotHtml}<span style="color: ${textColor}; ${weight} white-space: nowrap;">${l.text}</span></div>`;
-                    } else {
-                        return `<div style="display: flex; align-items: center; line-height: 1.4; margin: 1px 0;"><span style="color: #555; flex-shrink: 0;">→</span>${dotHtml}<span style="color: ${textColor}; ${weight} white-space: nowrap;">${l.text}</span></div>`;
-                    }
+                    return `<div style="display: flex; align-items: center; line-height: 1.4; margin: 1px 0;"><span style="color: #555; flex-shrink: 0;">→</span>${dotHtml}<span style="color: ${textColor}; ${weight} white-space: nowrap;">${l.text}</span></div>`;
                 }).join('');
 
                 const labelBg = info.hasSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
