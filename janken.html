@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (系統樹一本線判定版)</title>
+    <title>じゃんけん生態系シミュレーター (系統樹点線重ね版)</title>
     <style>
         body {
             margin: 0;
@@ -471,7 +471,7 @@
             <div id="info">
                 【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置 / 個体を選択</strong>してください。<br>
                 現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
-                <span style="color: #e74c3c; font-weight: bold;">※ 指定の判定半径内に制限以上の個体が高密度に集まると、その瞬間「即死」して消滅します。</span>
+                <span style="color: #e74c3c; font-weight: bold;">※ 指定 of 判定半径内に制限以上の個体が高密度に集まると、その瞬間「即死」して消滅します。</span>
             </div>
         </div>
 
@@ -1122,13 +1122,8 @@
                 const color = info.selected ? '#f1c40f' : (info.alive ? '#fff' : '#777');
                 const weight = info.selected ? 'font-weight: bold;' : '';
                 
-                // 親の持つすべての子（兄弟たち）のリストを取得
                 const parentChildren = childrenMap.get(node.parentId) || [];
 
-                // 【条件修正】
-                // 1. 親が絶滅している
-                // 2. 自分が絶滅している
-                // 3. 親の子供リストの長さが 1 である（＝自分が唯一の子供であり、一本線でつながっている）
                 let hasArrow = false;
                 if (!parentAlive && !info.alive && parentChildren.length === 1) {
                     hasArrow = true;
@@ -1138,11 +1133,13 @@
 
                 html += `
                     <div style="margin-top: 2px;">
-                        <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0;">
-                            <!-- 矢印を丸アイコンの左側に配置 -->
-                            ${hasArrow ? '<span style="color: #666; font-weight: bold; flex-shrink: 0; font-size: 12px; margin-right: -2px;">→</span>' : ''}
+                        <!-- 行コンテナに position: relative を追加 -->
+                        <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0; position: relative;">
                             
-                            <!-- 子世代の丸：絶滅後も鮮やかな元の色で固定 -->
+                            <!-- 矢印を絶対配置（left: -18px）にし、背景色を敷いて点線にめり込ませる -->
+                            ${hasArrow ? '<span style="position: absolute; left: -18px; width: 12px; text-align: center; background: #2c2c2c; color: #666; font-weight: bold; font-size: 11px; z-index: 2;">→</span>' : ''}
+                            
+                            <!-- 子世代の丸 -->
                             <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
                             
                             <!-- テキストラベル -->
