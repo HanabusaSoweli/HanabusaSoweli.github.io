@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (家系図・絶滅集約版)</title>
+    <title>じゃんけん生態系シミュレーター (家系図・縦連結版)</title>
     <style>
         body {
             margin: 0;
@@ -1031,7 +1031,6 @@
             });
         }
 
-        // ★一本道の系統のうち【絶滅している世代だけ】を右側に連結する関数
         function getCompressedNodeInfo(startNode, counts, childrenMap) {
             let current = startNode;
             let labels = [];
@@ -1063,17 +1062,15 @@
 
                 const children = childrenMap.get(current.id) || [];
                 
-                // 【条件変更】一本道（子ノードが1つ）かつ、このノード自身が「絶滅している(0体)」場合のみ右に連結する
                 if (children.length === 1 && aliveCount === 0) {
                     current = children[0];
                 } else {
-                    // 枝分かれしている、末端に達した、あるいは「現在生き残っている」場合は連結を止め、インデントを下げるためにブレイク
                     break;
                 }
             }
 
             return {
-                lastNodeId: current.id, // 次の階層の展開元となるノードID
+                lastNodeId: current.id, 
                 labels: labels,
                 color: color,
                 hasSelected: hasSelected,
@@ -1081,6 +1078,7 @@
             };
         }
 
+        // ★絶滅した一本道を横並び (→) にせず、改行して縦に繋がる1本のテキストブロックとして生成する
         function updateLineagePanel() {
             if (lineagePanel.style.display === 'none') return;
 
@@ -1121,20 +1119,24 @@
             roots.forEach(root => {
                 const info = getCompressedNodeInfo(root, counts, childrenMap);
                 
-                const labelHtml = info.labels.map(l => {
+                const labelHtml = info.labels.map((l, idx) => {
                     const color = l.selected ? '#f1c40f' : (l.alive ? '#fff' : '#777');
                     const weight = l.selected ? 'font-weight: bold;' : '';
-                    return `<span style="color: ${color}; ${weight} white-space: nowrap;">${l.text}</span>`;
-                }).join(' <span style="color: #555; margin: 0 2px;">→</span> ');
+                    if (idx === 0) {
+                        return `<span style="color: ${color}; ${weight} white-space: nowrap;">${l.text}</span>`;
+                    } else {
+                        return `<br><span style="color: #555; margin-right: 4px;">→</span><span style="color: ${color}; ${weight} white-space: nowrap;">${l.text}</span>`;
+                    }
+                }).join('');
 
                 const labelBg = info.hasSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
                 const iconStyle = info.anyAlive ? '' : 'opacity: 0.35; border-color: rgba(255,255,255,0.3);';
 
                 html += `
                     <div style="margin-bottom: 12px;">
-                        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 4px 0; line-height: 1.6;">
-                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0; ${iconStyle}"></span>
-                            <span style="${labelBg} display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px;">${labelHtml}</span>
+                        <div style="display: flex; align-items: flex-start; gap: 6px; margin: 4px 0; line-height: 1.6;">
+                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0; margin-top: 5px; ${iconStyle}"></span>
+                            <div style="${labelBg} flex: 1;">${labelHtml}</div>
                         </div>
                         ${buildLineageTreeHtml(info.lastNodeId, counts, childrenMap)}
                     </div>`;
@@ -1150,20 +1152,24 @@
             children.forEach(node => {
                 const info = getCompressedNodeInfo(node, counts, childrenMap);
 
-                const labelHtml = info.labels.map(l => {
+                const labelHtml = info.labels.map((l, idx) => {
                     const color = l.selected ? '#f1c40f' : (l.alive ? '#fff' : '#777');
                     const weight = l.selected ? 'font-weight: bold;' : '';
-                    return `<span style="color: ${color}; ${weight} white-space: nowrap;">${l.text}</span>`;
-                }).join(' <span style="color: #555; margin: 0 2px;">→</span> ');
+                    if (idx === 0) {
+                        return `<span style="color: ${color}; ${weight} white-space: nowrap;">${l.text}</span>`;
+                    } else {
+                        return `<br><span style="color: #555; margin-right: 4px;">→</span><span style="color: ${color}; ${weight} white-space: nowrap;">${l.text}</span>`;
+                    }
+                }).join('');
 
                 const labelBg = info.hasSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
                 const iconStyle = info.anyAlive ? '' : 'opacity: 0.35; border-color: rgba(255,255,255,0.3);';
 
                 html += `
                     <div style="margin-top: 2px;">
-                        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 3px 0; line-height: 1.6;">
-                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0; ${iconStyle}"></span>
-                            <span style="${labelBg} display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px;">${labelHtml}</span>
+                        <div style="display: flex; align-items: flex-start; gap: 6px; margin: 3px 0; line-height: 1.6;">
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0; margin-top: 5px; ${iconStyle}"></span>
+                            <div style="${labelBg} flex: 1;">${labelHtml}</div>
                         </div>
                         ${buildLineageTreeHtml(info.lastNodeId, counts, childrenMap)}
                     </div>`;
