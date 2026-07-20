@@ -115,7 +115,7 @@
             display: flex;
             align-items: center;
             gap: 4px;
-            }
+        }
         .radio-group {
             display: flex;
             flex-direction: column;
@@ -1091,7 +1091,7 @@
             lineageContent.innerHTML = html;
         }
 
-        // 【修正】生存時は何も表示せず(｜を撤廃)、絶滅時のみ「→」を出して親と同じ縦ラインに揃える関数
+        // 【修正】HTMLの縦線と被らないよう、文字の「｜」を出さないように修正
         function buildChainHtml(startNode, counts, childrenMap, isRoot = false, parentAlive = true) {
             const chain = getLinearChain(startNode, counts, childrenMap);
             let html = '';
@@ -1105,9 +1105,11 @@
                     : (node.id.split('-')[0] === selectedCreature.familyId)
                 );
 
-                // 直前の親の生死に基づいて記号を決定 (生存時は非表示、絶滅時のみ「→」)
+                // 直前の親の生死に基づいて記号を割り振る（生存時は空文字にしてHTML枠線に任せる）
                 let prefix = '';
-                if (!(isRoot && idx === 0)) {
+                if (isRoot && idx === 0) {
+                    prefix = ''; 
+                } else {
                     prefix = currentParentAlive ? '' : '→';
                 }
 
@@ -1123,10 +1125,9 @@
 
                 const labelBg = isSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
 
-                // prefixが「→」のときだけ記号用の幅を確保し、それ以外（生存時）は左詰めにする
                 html += `
                     <div style="display: flex; align-items: center; margin: 3px 0; ${labelBg} color: ${textColor}; ${weight} white-space: nowrap; font-family: monospace, sans-serif; font-size: 13px;">
-                        ${prefix === '→' ? `<span style="color: #666; margin-right: 2px; font-weight: bold; width: 14px; display: inline-block; text-align: center;">→</span>` : ''}
+                        ${prefix ? `<span style="color: #666; margin-right: 2px; font-weight: bold; width: 14px; display: inline-block; text-align: center;">${prefix}</span>` : ''}
                         ${dotHtml}
                         <span>${labelText}</span>
                     </div>
@@ -1141,7 +1142,6 @@
             if (children.length > 0) {
                 const lastNodeAlive = (counts[lastNode.id] || 0) > 0;
                 
-                // 親ノードが絶滅している場合はインデント（字下げ）を完全にゼロにする
                 let borderStyle = lastNodeAlive 
                     ? 'border-left: 1px dashed #555; padding-left: 12px; margin-left: 6px;' 
                     : 'border-left: none; padding-left: 0px; margin-left: 0px;';
