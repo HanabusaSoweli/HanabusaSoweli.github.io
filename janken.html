@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (家系図拡張版)</title>
+    <title>じゃんけん生態系シミュレーター (家系図アコーディオン版)</title>
     <style>
         body {
             margin: 0;
@@ -1031,9 +1031,19 @@
             });
         }
 
-        // ★大幅に高速化した家系図パネル更新関数
+        // 🌳 家系図パネル更新関数（絶滅系統アコーディオン自動開閉・状態維持対応版）
         function updateLineagePanel() {
             if (lineagePanel.style.display === 'none') return;
+
+            // 1. 現在ユーザーが手動で「開いている」「閉じている」状態のdetailsタグを全スキャンして記憶
+            const userOpenedNodes = new Set();
+            const userClosedNodes = new Set();
+            lineageContent.querySelectorAll('details').forEach(d => {
+                if (d.dataset.nodeId) {
+                    if (d.open) userOpenedNodes.add(d.dataset.nodeId);
+                    else userClosedNodes.add(d.dataset.nodeId);
+                }
+            });
 
             const counts = {};
             creatures.forEach(c => counts[c.lineageId] = (counts[c.lineageId] || 0) + 1);
@@ -1047,12 +1057,11 @@
                 }
             });
 
-            // ハッシュマップ（Map）を作り、親子関係をO(1)で引けるように事前インデックス化
             const childrenMap = new Map();
             const roots = [];
 
             Object.values(lineageRegistry).forEach(node => {
-                if (!activeNodes.has(node.id)) return; // 生きていない系統のデータは完全スルー
+                if (!activeNodes.has(node.id)) return; 
                 
                 if (node.parentId === null) {
                     roots.push(node);
@@ -1069,9 +1078,25 @@
                 return;
             }
 
+            // 2. 各系統（子孫の変異すべて含む）の「一族合計生存数」をボトムアップで事前計算
+            const totalAliveMap = new Map();
+            function calculateTotalAlive(nodeId) {
+                let total = counts[nodeId] || 0;
+                const children = childrenMap.get(nodeId) || [];
+                children.forEach(child => {
+                    total += calculateTotalAlive(child.id);
+                });
+                totalAliveMap.set(nodeId, total);
+                return total;
+            }
+            roots.forEach(root => calculateTotalAlive(root.id));
+
+            // 3. HTML構築
             let html = '';
             roots.forEach(root => {
                 const aliveCount = counts[root.id] || 0;
+                const totalAlive = totalAliveMap.get(root.id) || 0;
+                const children = childrenMap.get(root.id) || [];
                 const isSelected = selectedCreature && (getSelectedHighlightMode() === 'pureLineage' ? (root.id === selectedCreature.lineageId) : (root.id.split('-')[0] === selectedCreature.familyId));
                 
                 const labelBg = isSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px; font-weight: bold;' : '';
@@ -1079,26 +1104,48 @@
                 const countColor = aliveCount > 0 ? '#aaa' : '#555';
                 const iconStyle = aliveCount > 0 ? '' : 'opacity: 0.35; border-color: rgba(255,255,255,0.3);';
 
-                html += `
-                    <div style="margin-bottom: 10px;">
-                        <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0;">
+                // 開閉判定（ユーザーの過去の操作が最優先、無ければ一族が生きているかどうか）
+                let isOpen = totalAlive > 0;
+                if (userOpenedNodes.has(root.id)) isOpen = true;
+                if (userClosedNodes.has(root.id)) isOpen = false;
+                const openAttr = isOpen ? 'open' : '';
+
+                const textLabel = `${root.label} <span style="color: ${countColor}; font-size: 10px;">(一族:${totalAlive}体 / 直系:${aliveCount}体)</span>`;
+
+                if (children.length > 0) {
+                    html += `
+                        <details ${openAttr} data-node-id="${root.id}" style="margin-bottom: 6px;">
+                            <summary style="cursor: pointer; user-select: none; color: ${textColor}; margin: 3px 0;">
+                                <div style="display: inline-flex; align-items: center; gap: 6px; ${labelBg}">
+                                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${root.color}; border: 1px solid #fff; flex-shrink: 0; ${iconStyle}"></span>
+                                    <span>${textLabel}</span>
+                                    ${totalAlive === 0 ? '<span style="color: #e74c3c; font-size: 10px; font-weight: bold; margin-left: 2px;">[絶滅]</span>' : ''}
+                                </div>
+                            </summary>
+                            ${buildLineageTreeHtml(root.id, counts, childrenMap, totalAliveMap, userOpenedNodes, userClosedNodes)}
+                        </details>`;
+                } else {
+                    html += `
+                        <div style="margin-bottom: 6px; display: flex; align-items: center; gap: 6px; padding-left: 16px;">
                             <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${root.color}; border: 1px solid #fff; flex-shrink: 0; ${iconStyle}"></span>
-                            <span style="${labelBg} color: ${textColor};">${root.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
-                        </div>
-                        ${buildLineageTreeHtml(root.id, counts, childrenMap)}
-                    </div>`;
+                            <span style="${labelBg} color: ${textColor};">${textLabel}</span>
+                            ${totalAlive === 0 ? '<span style="color: #e74c3c; font-size: 10px; font-weight: bold; margin-left: 2px;">[絶滅]</span>' : ''}
+                        </div>`;
+                }
             });
             lineageContent.innerHTML = html;
         }
 
-        // 高速化に対応したツリー構造生成（childrenMapを受け取って一瞬で処理）
-        function buildLineageTreeHtml(parentId, counts, childrenMap) {
+        // アコーディオン（details）に対応した再帰ツリー生成関数
+        function buildLineageTreeHtml(parentId, counts, childrenMap, totalAliveMap, userOpenedNodes, userClosedNodes) {
             const children = childrenMap.get(parentId) || [];
             if (children.length === 0) return '';
 
-            let html = '<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px;">';
+            let html = '<div style="display: flex; flex-direction: column; gap: 2px; padding-left: 10px; border-left: 1px dashed #555; margin-left: 6px;">';
             children.forEach(node => {
                 const aliveCount = counts[node.id] || 0;
+                const totalAlive = totalAliveMap.get(node.id) || 0;
+                const subChildren = childrenMap.get(node.id) || [];
                 const isSelected = selectedCreature && (getSelectedHighlightMode() === 'pureLineage' ? (node.id === selectedCreature.lineageId) : (node.id.split('-')[0] === selectedCreature.familyId));
                 
                 const labelBg = isSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px; font-weight: bold;' : '';
@@ -1106,14 +1153,33 @@
                 const countColor = aliveCount > 0 ? '#aaa' : '#555';
                 const iconStyle = aliveCount > 0 ? '' : 'opacity: 0.35; border-color: rgba(255,255,255,0.3);';
 
-                html += `
-                    <div>
-                        <div style="display: flex; align-items: center; gap: 6px; margin: 2px 0;">
+                let isOpen = totalAlive > 0;
+                if (userOpenedNodes.has(node.id)) isOpen = true;
+                if (userClosedNodes.has(node.id)) isOpen = false;
+                const openAttr = isOpen ? 'open' : '';
+
+                const textLabel = `${node.label} <span style="color: ${countColor}; font-size: 10px;">(一族:${totalAlive}体 / 直系:${aliveCount}体)</span>`;
+
+                if (subChildren.length > 0) {
+                    html += `
+                        <details ${openAttr} data-node-id="${node.id}">
+                            <summary style="cursor: pointer; user-select: none; color: ${textColor}; margin: 2px 0;">
+                                <div style="display: inline-flex; align-items: center; gap: 6px; ${labelBg}">
+                                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${node.color}; border: 1px solid #fff; flex-shrink: 0; ${iconStyle}"></span>
+                                    <span>${textLabel}</span>
+                                    ${totalAlive === 0 ? '<span style="color: #e74c3c; font-size: 10px; font-weight: bold; margin-left: 2px;">[絶滅]</span>' : ''}
+                                </div>
+                            </summary>
+                            ${buildLineageTreeHtml(node.id, counts, childrenMap, totalAliveMap, userOpenedNodes, userClosedNodes)}
+                        </details>`;
+                } else {
+                    html += `
+                        <div style="display: flex; align-items: center; gap: 6px; margin: 2px 0; padding-left: 14px;">
                             <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${node.color}; border: 1px solid #fff; flex-shrink: 0; ${iconStyle}"></span>
-                            <span style="${labelBg} color: ${textColor};">${node.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
-                        </div>
-                        ${buildLineageTreeHtml(node.id, counts, childrenMap)}
-                    </div>`;
+                            <span style="${labelBg} color: ${textColor};">${textLabel}</span>
+                            ${totalAlive === 0 ? '<span style="color: #e74c3c; font-size: 10px; font-weight: bold; margin-left: 2px;">[絶滅]</span>' : ''}
+                        </div>`;
+                }
             });
             html += '</div>';
             return html;
