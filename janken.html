@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (家系図縦スリム版)</title>
+    <title>じゃんけん生態系シミュレーター (系統条件矢印版)</title>
     <style>
         body {
             margin: 0;
@@ -1077,7 +1077,6 @@
             };
         }
 
-        // ★一本道の系統を縦並びに整形して出力するよう修正した家系図パネル更新関数
         function updateLineagePanel() {
             if (lineagePanel.style.display === 'none') return;
 
@@ -1118,11 +1117,20 @@
             roots.forEach(root => {
                 const info = getCompressedNodeInfo(root, counts, childrenMap);
                 
-                // 集約されたラベル配列を縦並び（2行目以降に「→」を付与）のHTMLに構築
+                // ★ 矢印（→）の表示判定ロジックを変更
                 const labelHtml = info.labels.map((l, index) => {
                     const color = l.selected ? '#f1c40f' : (l.alive ? '#fff' : '#777');
                     const weight = l.selected ? 'font-weight: bold;' : '';
-                    const prefix = index > 0 ? '<span style="color: #555; margin-right: 2px;">→</span>' : '';
+                    
+                    let prefix = '';
+                    if (index > 0) {
+                        const prev = info.labels[index - 1];
+                        // 条件: 直前の世代(A)も今回の世代(B)もすべて死んでいる(aliveがfalse)場合のみ矢印
+                        if (!prev.alive && !l.alive) {
+                            prefix = '<span style="color: #555; margin-right: 2px;">→</span>';
+                        }
+                    }
+                    
                     return `<div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${prefix}${l.text}</span></div>`;
                 }).join('');
 
@@ -1141,7 +1149,6 @@
             lineageContent.innerHTML = html;
         }
 
-        // ★同じく下層ツリー構造も縦並びに対応
         function buildLineageTreeHtml(parentId, counts, childrenMap) {
             const children = childrenMap.get(parentId) || [];
             if (children.length === 0) return '';
@@ -1150,10 +1157,19 @@
             children.forEach(node => {
                 const info = getCompressedNodeInfo(node, counts, childrenMap);
 
+                // ★ こちらの下層ツリー構造も同様の判定に修正
                 const labelHtml = info.labels.map((l, index) => {
                     const color = l.selected ? '#f1c40f' : (l.alive ? '#fff' : '#777');
                     const weight = l.selected ? 'font-weight: bold;' : '';
-                    const prefix = index > 0 ? '<span style="color: #555; margin-right: 2px;">→</span>' : '';
+                    
+                    let prefix = '';
+                    if (index > 0) {
+                        const prev = info.labels[index - 1];
+                        if (!prev.alive && !l.alive) {
+                            prefix = '<span style="color: #555; margin-right: 2px;">→</span>';
+                        }
+                    }
+                    
                     return `<div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${prefix}${l.text}</span></div>`;
                 }).join('');
 
