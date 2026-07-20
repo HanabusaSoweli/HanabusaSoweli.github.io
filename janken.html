@@ -1100,24 +1100,20 @@
                 html += `
                     <div style="margin-bottom: 12px;">
                         <div style="display: flex; align-items: center; gap: 6px; margin: 4px 0;">
-                            <!-- ルート（最上位親）の丸 -->
                             <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
                             <div style="${labelBg} display: flex; flex-direction: column;">
                                 <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
                             </div>
                         </div>
-                        ${buildLineageTreeHtml(info.id, counts, childrenMap)}
+                        ${buildLineageTreeHtml(info.id, info.alive, counts, childrenMap)}
                     </div>`;
             });
             lineageContent.innerHTML = html;
         }
 
-        function buildLineageTreeHtml(parentId, counts, childrenMap) {
+        function buildLineageTreeHtml(parentId, parentAlive, counts, childrenMap) {
             const children = childrenMap.get(parentId) || [];
             if (children.length === 0) return '';
-
-            // 【新条件】親（parentId）から見て、現在表示対象となっている子供（系統）が1つだけ＝一本線
-            const isSingleChild = children.length === 1;
 
             let html = '<div style="display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px; margin-top: 2px;">';
             children.forEach(node => {
@@ -1126,26 +1122,35 @@
                 const color = info.selected ? '#f1c40f' : (info.alive ? '#fff' : '#777');
                 const weight = info.selected ? 'font-weight: bold;' : '';
                 
-                // 親ノードから自分へ一本線で繋がっている時だけ矢印を表示
-                let hasArrow = isSingleChild;
+                // 親の持つすべての子（兄弟たち）のリストを取得
+                const parentChildren = childrenMap.get(node.parentId) || [];
+
+                // 【条件修正】
+                // 1. 親が絶滅している
+                // 2. 自分が絶滅している
+                // 3. 親の子供リストの長さが 1 である（＝自分が唯一の子供であり、一本線でつながっている）
+                let hasArrow = false;
+                if (!parentAlive && !info.alive && parentChildren.length === 1) {
+                    hasArrow = true;
+                }
 
                 const labelBg = info.selected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
 
                 html += `
                     <div style="margin-top: 2px;">
                         <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0;">
-                            <!-- 1. 矢印を丸アイコンの左側に配置 -->
-                            ${hasArrow ? '<span style="color: #bbb; font-weight: bold; flex-shrink: 0; font-size: 12px; margin-right: -2px;">→</span>' : ''}
+                            <!-- 矢印を丸アイコンの左側に配置 -->
+                            ${hasArrow ? '<span style="color: #666; font-weight: bold; flex-shrink: 0; font-size: 12px; margin-right: -2px;">→</span>' : ''}
                             
-                            <!-- 2. 子世代の丸：常に鮮やかな元の色で固定 -->
+                            <!-- 子世代の丸：絶滅後も鮮やかな元の色で固定 -->
                             <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
                             
-                            <!-- 3. テキストラベル -->
+                            <!-- テキストラベル -->
                             <div style="${labelBg} display: flex; flex-direction: column;">
                                 <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
                             </div>
                         </div>
-                        ${buildLineageTreeHtml(node.id, counts, childrenMap)}
+                        ${buildLineageTreeHtml(info.id, info.alive, counts, childrenMap)}
                     </div>`;
             });
             html += '</div>';
