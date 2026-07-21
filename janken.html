@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (系統樹点線重ね・直列フラット化版)</title>
+    <title>じゃんけん生態系シミュレーター (家系図絶滅ログ自動整理版)</title>
     <style>
         body {
             margin: 0;
@@ -471,7 +471,7 @@
             <div id="info">
                 【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置 / 個体を選択</strong>してください。<br>
                 現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
-                <span style="color: #e74c3c; font-weight: bold;">※ 指定 of 判定半径内に制限以上の個体が高密度に集まると、その瞬間「即死」して消滅します。</span>
+                <span style="color: #e74c3c; font-weight: bold;">※ 指定の判定半径内に制限以上の個体が高密度に集まると、その瞬間「即死」して消滅します。</span>
             </div>
         </div>
 
@@ -1031,26 +1031,105 @@
             });
         }
 
-        function getNodeInfo(node, counts) {
-            const aliveCount = counts[node.id] || 0;
-            const isSelected = selectedCreature && (
-                getSelectedHighlightMode() === 'pureLineage' 
-                ? (node.id === selectedCreature.lineageId) 
-                : (node.id.split('-')[0] === selectedCreature.familyId)
-            );
-            
-            let labelText = node.label;
-            if (aliveCount > 0) {
-                labelText += ` (${aliveCount}体)`;
+        // ★絶滅（生存数0かつ未選択）した不要な過去世代を自動スキップするノード情報抽出関数
+        function getCompressedNodeInfo(startNode, counts, childrenMap) {
+            let current = startNode;
+            let labels = [];
+            let color = startNode.color;
+            let hasSelected = false;
+            let anyAlive = false;
+            let lastNode = startNode;
+
+            while (current) {
+                lastNode = current;
+                const aliveCount = counts[current.id] || 0;
+                if (aliveCount > 0) anyAlive = true;
+
+                const isSelected = selectedCreature && (
+                    getSelectedHighlightMode() === 'pureLineage' 
+                    ? (current.id === selectedCreature.lineageId) 
+                    : (current.id.split('-')[0] === selectedCreature.familyId)
+                );
+                if (isSelected) hasSelected = true;
+
+                // 生存数が1体以上、または選択中のノードのみを家系図上に表示（絶滅した過去世代はスキップ）
+                if (aliveCount > 0 || isSelected) {
+                    let labelText = current.label;
+                    if (aliveCount > 0) {
+                        labelText += ` (${aliveCount}体)`;
+                    }
+
+                    labels.push({
+                        text: labelText,
+                        alive: aliveCount > 0,
+                        selected: isSelected
+                    });
+                    color = current.color;
+                }
+
+                const children = childrenMap.get(current.id) || [];
+                if (children.length === 1) {
+                    current = children[0];
+                } else {
+                    break;
+                }
             }
 
             return {
-                id: node.id,
-                label: labelText,
-                color: node.color,
-                alive: aliveCount > 0,
-                selected: isSelected
+                lastNodeId: lastNode.id, 
+                labels: labels,
+                color: color,
+                hasSelected: hasSelected,
+                anyAlive: anyAlive
             };
+        }
+
+        function renderNodeBlockHtml(node, counts, childrenMap, isRoot = false) {
+            const info = getCompressedNodeInfo(node, counts, childrenMap);
+            
+            let labelBlockHtml = '';
+            if (info.labels.length > 0) {
+                const labelHtml = info.labels.map((l, index) => {
+                    const color = l.selected ? '#f1c40f' : (l.alive ? '#fff' : '#777');
+                    const weight = l.selected ? 'font-weight: bold;' : '';
+                    const prefix = index > 0 ? '<span style="color: #555; margin-right: 2px;">→</span>' : '';
+                    return `<div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${prefix}${l.text}</span></div>`;
+                }).join('');
+
+                const labelBg = info.hasSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
+                const iconStyle = info.anyAlive ? '' : 'opacity: 0.35; border-color: rgba(255,255,255,0.3);';
+                const dotSize = isRoot ? '10px' : '8px';
+
+                labelBlockHtml = `
+                    <div style="display: flex; align-items: flex-start; gap: 6px; margin: 3px 0;">
+                        <span style="display: inline-block; width: ${dotSize}; height: ${dotSize}; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0; margin-top: 4px; ${iconStyle}"></span>
+                        <div style="${labelBg} display: flex; flex-direction: column;">${labelHtml}</div>
+                    </div>`;
+            }
+
+            const childrenHtml = buildLineageTreeHtml(info.lastNodeId, counts, childrenMap);
+
+            if (!labelBlockHtml && !childrenHtml) return '';
+
+            return `
+                <div style="margin-top: 2px;">
+                    ${labelBlockHtml}
+                    ${childrenHtml}
+                </div>`;
+        }
+
+        function buildLineageTreeHtml(parentId, counts, childrenMap) {
+            const children = childrenMap.get(parentId) || [];
+            if (children.length === 0) return '';
+
+            let childBlocksHtml = '';
+            children.forEach(node => {
+                childBlocksHtml += renderNodeBlockHtml(node, counts, childrenMap, false);
+            });
+
+            if (!childBlocksHtml) return '';
+
+            return `<div style="display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px; margin-top: 2px;">${childBlocksHtml}</div>`;
         }
 
         function updateLineagePanel() {
@@ -1091,84 +1170,17 @@
 
             let html = '';
             roots.forEach(root => {
-                const info = getNodeInfo(root, counts);
-                
-                const color = info.selected ? '#f1c40f' : (info.alive ? '#fff' : '#777');
-                const weight = info.selected ? 'font-weight: bold;' : '';
-                const labelBg = info.selected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
-
-                html += `
-                    <div style="margin-bottom: 12px;">
-                        <div style="display: flex; align-items: center; gap: 6px; margin: 4px 0;">
-                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
-                            <div style="${labelBg} display: flex; flex-direction: column;">
-                                <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
-                            </div>
-                        </div>
-                        ${renderSubtree(info.id, info.alive, counts, childrenMap)}
-                    </div>`;
-            });
-            lineageContent.innerHTML = html;
-        }
-
-        function renderSubtree(parentId, parentAlive, counts, childrenMap) {
-            const children = childrenMap.get(parentId) || [];
-            if (children.length === 0) return '';
-
-            let html = '<div style="display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px; margin-top: 2px;">';
-            children.forEach(node => {
-                html += renderNodeBranch(node, parentAlive, counts, childrenMap);
-            });
-            html += '</div>';
-            return html;
-        }
-
-        function renderNodeBranch(node, parentAlive, counts, childrenMap) {
-            const info = getNodeInfo(node, counts);
-            const color = info.selected ? '#f1c40f' : (info.alive ? '#fff' : '#777');
-            const weight = info.selected ? 'font-weight: bold;' : '';
-            const parentChildren = childrenMap.get(node.parentId) || [];
-
-            let hasArrow = false;
-            if (!parentAlive && !info.alive && parentChildren.length === 1) {
-                hasArrow = true;
-            }
-
-            const labelBg = info.selected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 2px 6px; font-weight: bold;' : '';
-
-            let html = `
-                <div style="margin-top: 2px;">
-                    <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0; position: relative;">
-                        ${hasArrow ? '<span style="position: absolute; left: -18px; width: 12px; text-align: center; background: #2c2c2c; color: #666; font-weight: bold; font-size: 11px; z-index: 2;">→</span>' : ''}
-                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${info.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
-                        <div style="${labelBg} display: flex; flex-direction: column;">
-                            <div style="line-height: 1.4;"><span style="color: ${color}; ${weight} white-space: nowrap;">${info.label}</span></div>
-                        </div>
-                    </div>`;
-
-            const nodeChildren = childrenMap.get(node.id) || [];
-            
-            if (nodeChildren.length === 1) {
-                const child = nodeChildren[0];
-                const childInfo = getNodeInfo(child, counts);
-                const isContinuousArrow = (!info.alive && !childInfo.alive);
-
-                if (isContinuousArrow) {
-                    // 一本道（連続する矢印）の場合は、新しいインデント階層を作らずに同じ階層にフラットに直接繋げる
-                    html += renderNodeBranch(child, info.alive, counts, childrenMap);
-                } else {
-                    if (nodeChildren.length > 0) {
-                        html += renderSubtree(node.id, info.alive, counts, childrenMap);
-                    }
+                const blockHtml = renderNodeBlockHtml(root, counts, childrenMap, true);
+                if (blockHtml) {
+                    html += `<div style="margin-bottom: 12px;">${blockHtml}</div>`;
                 }
+            });
+
+            if (!html) {
+                lineageContent.innerHTML = `<div class="status-placeholder">生き残っている個体がありません。</div>`;
             } else {
-                if (nodeChildren.length > 0) {
-                    html += renderSubtree(node.id, info.alive, counts, childrenMap);
-                }
+                lineageContent.innerHTML = html;
             }
-
-            html += `</div>`;
-            return html;
         }
 
         function loop() {
