@@ -558,14 +558,12 @@
                 preEditTimeScale = timeScale;
                 timeScale = 0; // 強制的に0倍（停止）
                 
-                // 速度UIの強調表示を停止(0)に合わせる
                 speedBtns.forEach(b => b.classList.toggle('active', parseFloat(b.dataset.speed) === 0));
 
                 toggleEditNameBtn.textContent = '✏️ 名前編集: ON';
                 toggleEditNameBtn.style.backgroundColor = '#e67e22';
                 toggleEditNameBtn.style.borderColor = '#d35400';
 
-                // 家系図パネルが閉じていたら自動で開く
                 if (lineagePanel.style.display === 'none' || lineagePanel.style.display === '') {
                     lineagePanel.style.display = 'flex';
                     toggleLineageBtn.textContent = '🌳 家系図: 表示中';
@@ -584,13 +582,14 @@
             updateLineagePanel();
         });
 
-        // 家系図内の名前入力イベントの捕捉
+        // 家系図内の名前入力イベント捕捉 (編集されたノードにisCustomNamedフラグを付与)
         lineageContent.addEventListener('input', (e) => {
             if (e.target && e.target.classList.contains('lineage-label-input')) {
                 const nodeVal = e.target.value;
                 const nodeId = e.target.dataset.id;
                 if (lineageRegistry[nodeId]) {
                     lineageRegistry[nodeId].label = nodeVal;
+                    lineageRegistry[nodeId].isCustomNamed = true; // ユーザーが名前を変更したことを記録
                 }
             }
         });
@@ -951,7 +950,7 @@
                 btn.classList.add('active');
                 const speedVal = parseFloat(btn.dataset.speed);
                 if (isEditMode) {
-                    preEditTimeScale = speedVal; // 編集モード中は待機時スピードを更新
+                    preEditTimeScale = speedVal; 
                 } else {
                     timeScale = speedVal;
                 }
@@ -977,7 +976,7 @@
                 else {
                     const initGenes = getInitialGenes();
                     const familyId = `家系 #${++familyCounter}`;
-                    lineageRegistry[familyId] = { id: familyId, parentId: null, label: familyId, color: getCreatureColorString(initGenes) };
+                    lineageRegistry[familyId] = { id: familyId, parentId: null, label: familyId, color: getCreatureColorString(initGenes), isCustomNamed: false };
                     creatures.push(new Creature(x, y, initGenes, familyId, familyId));
                 }
             }
@@ -1084,7 +1083,7 @@
             });
         }
 
-        // 家系図描画処理 (編集モード対応)
+        // 家系図描画処理 (名前命名済みノードの永久保存対応)
         function updateLineagePanel() {
             if (lineagePanel.style.display === 'none') return;
 
@@ -1092,41 +1091,42 @@
             const counts = {};
             creatures.forEach(c => counts[c.lineageId] = (counts[c.lineageId] || 0) + 1);
 
-            // 2. 各ノードについて「自身または子孫に生存個体がいるか」を判定 (hasAlive)
-            const hasAlive = {};
+            // 2. 「生存個体がいる」または「名前が変更された（isCustomNamed）」ノードとその全親祖先を保持対象(hasKeep)とする
+            const hasKeep = {};
             Object.keys(lineageRegistry).forEach(id => {
-                if ((counts[id] || 0) > 0) {
+                const node = lineageRegistry[id];
+                if ((counts[id] || 0) > 0 || (node && node.isCustomNamed)) {
                     let curr = id;
                     while (curr) {
-                        hasAlive[curr] = true;
+                        hasKeep[curr] = true;
                         curr = lineageRegistry[curr] ? lineageRegistry[curr].parentId : null;
                     }
                 }
             });
 
-            // 3. 各ノードの「生存子孫を持つ直近の子ノード」リストを作成
+            // 3. 保持対象を持つ直近の子ノードマップを作成
             const activeChildrenMap = new Map();
             Object.values(lineageRegistry).forEach(node => {
-                if (!hasAlive[node.id]) return; 
+                if (!hasKeep[node.id]) return; 
                 const pId = node.parentId;
-                if (pId && hasAlive[pId]) {
+                if (pId && hasKeep[pId]) {
                     if (!activeChildrenMap.has(pId)) activeChildrenMap.set(pId, []);
                     activeChildrenMap.get(pId).push(node);
                 }
             });
 
-            // 4. 家系図上に「表示すべき重要なノード」かを判定する関数
+            // 4. 表示すべき重要ノードか判定 (生存個体がいる OR 名前がカスタム指定されているノードは永久表示)
             function isImportantNode(id) {
-                if (!hasAlive[id]) return false;
-                if ((counts[id] || 0) > 0) return true; 
+                if (!hasKeep[id]) return false;
                 const node = lineageRegistry[id];
+                if ((counts[id] || 0) > 0 || (node && node.isCustomNamed)) return true; 
                 if (!node || node.parentId === null) return true; 
                 const children = activeChildrenMap.get(id) || [];
                 if (children.length >= 2) return true; 
                 return false; 
             }
 
-            // 5. 中間絶滅ノードをスキップして、最寄りの重要親ノードを探索する関数
+            // 5. 中間絶滅ノードをスキップして最寄りの重要親ノードを探索
             function getEffectiveParentId(id) {
                 let curr = lineageRegistry[id] ? lineageRegistry[id].parentId : null;
                 while (curr) {
@@ -1136,7 +1136,7 @@
                 return null;
             }
 
-            // 6. 圧縮された新しい階層構造（ツリー）を構築
+            // 6. 圧縮された階層構造（ツリー）を構築
             const compressedChildrenMap = new Map();
             const compressedRoots = [];
 
@@ -1168,7 +1168,6 @@
                 const textColor = aliveCount > 0 ? (isSelected ? '#f1c40f' : '#fff') : '#777';
                 const countColor = aliveCount > 0 ? '#aaa' : '#555';
 
-                // 編集モードONの場合はテキスト入力ボックス、OFFの場合は通常のラベルテキスト
                 const labelDisplay = isEditMode
                     ? `<input type="text" class="lineage-label-input" data-id="${root.id}" value="${root.label}" style="background: #111; color: #fff; border: 1px solid #e67e22; border-radius: 3px; padding: 2px 4px; font-size: 11px; width: 110px;">`
                     : `${root.label}`;
@@ -1262,7 +1261,8 @@
                                 id: clone.lineageId, 
                                 parentId: oldLineageId, 
                                 label: `変異 #${mutationCounter}`, 
-                                color: getCreatureColorString(clone.genes) 
+                                color: getCreatureColorString(clone.genes),
+                                isCustomNamed: false
                             };
                         }
                         nextCreatures.push(clone);
@@ -1277,7 +1277,6 @@
             countBadge.textContent = creatures.length;
             updateStatusPanel();
 
-            // 名前編集モード(isEditMode)の入力中は再描画でフォーカスが外れないよう家系図の自動更新をスキップ
             if (!isEditMode && frameCount % 30 === 0) {
                 updateLineagePanel();
             }
