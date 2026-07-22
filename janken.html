@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (家系図圧縮版)</title>
+    <title>じゃんけん生態系シミュレーター</title>
     <style>
         body {
             margin: 0;
@@ -1063,7 +1063,6 @@
             });
 
             // 4. 家系図上に「表示すべき重要なノード」かを判定する関数
-            // 条件: 生存個体あり OR ルートノード OR 生存子孫を持つ子が2つ以上(分岐点)
             function isImportantNode(id) {
                 if (!hasAlive[id]) return false;
                 if ((counts[id] || 0) > 0) return true; 
@@ -1115,12 +1114,12 @@
                 const labelBg = isSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px; font-weight: bold;' : '';
                 const textColor = aliveCount > 0 ? (isSelected ? '#f1c40f' : '#fff') : '#777';
                 const countColor = aliveCount > 0 ? '#aaa' : '#555';
-                const iconStyle = aliveCount > 0 ? '' : 'opacity: 0.35; border-color: rgba(255,255,255,0.3);';
 
+                // ★色の丸(span)は絶滅に関わらず常に本来の色と不透明度で固定
                 html += `
                     <div style="margin-bottom: 10px;">
                         <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0;">
-                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${root.color}; border: 1px solid #fff; flex-shrink: 0; ${iconStyle}"></span>
+                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${root.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
                             <span style="${labelBg} color: ${textColor};">${root.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
                         </div>
                         ${buildLineageTreeHtml(root.id, counts, compressedChildrenMap)}
@@ -1142,12 +1141,12 @@
                 const labelBg = isSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px; font-weight: bold;' : '';
                 const textColor = aliveCount > 0 ? (isSelected ? '#f1c40f' : '#fff') : '#777';
                 const countColor = aliveCount > 0 ? '#aaa' : '#555';
-                const iconStyle = aliveCount > 0 ? '' : 'opacity: 0.35; border-color: rgba(255,255,255,0.3);';
 
+                // ★色の丸(span)は絶滅に関わらず常に本来の色と不透明度で固定
                 html += `
                     <div>
                         <div style="display: flex; align-items: center; gap: 6px; margin: 2px 0;">
-                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${node.color}; border: 1px solid #fff; flex-shrink: 0; ${iconStyle}"></span>
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${node.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
                             <span style="${labelBg} color: ${textColor};">${node.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
                         </div>
                         ${buildLineageTreeHtml(node.id, counts, compressedChildrenMap)}
