@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター</title>
+    <title>じゃんけん生態系シミュレーター (家系図圧縮版)</title>
     <style>
         body {
             margin: 0;
@@ -320,7 +320,7 @@
             font-weight: bold;
         }
 
-        #toggleLineageBtn {
+        #toggleLineageBtn, #toggleEditNameBtn {
             background-color: #7f8c8d;
             color: white;
             border-color: #616a6b;
@@ -440,6 +440,7 @@
                     </div>
                     
                     <button id="toggleLineageBtn" class="speed-btn">🌳 家系図: 非表示</button>
+                    <button id="toggleEditNameBtn" class="speed-btn">✏️ 名前編集: OFF</button>
                     <button id="clearBtn">クリア</button>
                 </div>
             </div>
@@ -500,6 +501,7 @@
         const lineageContent = document.getElementById('lineageContent');
         const lineagePanel = document.getElementById('lineagePanel');
         const toggleLineageBtn = document.getElementById('toggleLineageBtn');
+        const toggleEditNameBtn = document.getElementById('toggleEditNameBtn');
         const highlightRadios = document.getElementsByName('highlightMode');
 
         const addHandForm = document.getElementById('addHandForm');
@@ -514,6 +516,8 @@
 
         const SPEED_MULT = 0.25; 
         let timeScale = 1.0; 
+        let isEditMode = false;
+        let preEditTimeScale = 1.0;
 
         let currentCrowdRadius = 50;
         let currentCrowdLimit = 20;
@@ -544,6 +548,50 @@
                 toggleLineageBtn.textContent = '🌳 家系図: 非表示';
                 toggleLineageBtn.style.backgroundColor = '#7f8c8d';
                 toggleLineageBtn.style.borderColor = '#616a6b';
+            }
+        });
+
+        // ✏️ 名前編集モード切り替え処理
+        toggleEditNameBtn.addEventListener('click', () => {
+            isEditMode = !isEditMode;
+            if (isEditMode) {
+                preEditTimeScale = timeScale;
+                timeScale = 0; // 強制的に0倍（停止）
+                
+                // 速度UIの強調表示を停止(0)に合わせる
+                speedBtns.forEach(b => b.classList.toggle('active', parseFloat(b.dataset.speed) === 0));
+
+                toggleEditNameBtn.textContent = '✏️ 名前編集: ON';
+                toggleEditNameBtn.style.backgroundColor = '#e67e22';
+                toggleEditNameBtn.style.borderColor = '#d35400';
+
+                // 家系図パネルが閉じていたら自動で開く
+                if (lineagePanel.style.display === 'none' || lineagePanel.style.display === '') {
+                    lineagePanel.style.display = 'flex';
+                    toggleLineageBtn.textContent = '🌳 家系図: 表示中';
+                    toggleLineageBtn.style.backgroundColor = '#27ae60';
+                    toggleLineageBtn.style.borderColor = '#1e8449';
+                }
+            } else {
+                timeScale = preEditTimeScale; // 編集前の速度へ復帰
+                
+                speedBtns.forEach(b => b.classList.toggle('active', parseFloat(b.dataset.speed) === timeScale));
+
+                toggleEditNameBtn.textContent = '✏️ 名前編集: OFF';
+                toggleEditNameBtn.style.backgroundColor = '#7f8c8d';
+                toggleEditNameBtn.style.borderColor = '#616a6b';
+            }
+            updateLineagePanel();
+        });
+
+        // 家系図内の名前入力イベントの捕捉
+        lineageContent.addEventListener('input', (e) => {
+            if (e.target && e.target.classList.contains('lineage-label-input')) {
+                const nodeVal = e.target.value;
+                const nodeId = e.target.dataset.id;
+                if (lineageRegistry[nodeId]) {
+                    lineageRegistry[nodeId].label = nodeVal;
+                }
             }
         });
 
@@ -901,7 +949,12 @@
             btn.addEventListener('click', () => {
                 speedBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                timeScale = parseFloat(btn.dataset.speed);
+                const speedVal = parseFloat(btn.dataset.speed);
+                if (isEditMode) {
+                    preEditTimeScale = speedVal; // 編集モード中は待機時スピードを更新
+                } else {
+                    timeScale = speedVal;
+                }
             });
         });
 
@@ -1031,7 +1084,7 @@
             });
         }
 
-        // ★絶滅ノードの剪定＆一本道ノードの自動スキップ（圧縮）に対応した家系図描画処理
+        // 家系図描画処理 (編集モード対応)
         function updateLineagePanel() {
             if (lineagePanel.style.display === 'none') return;
 
@@ -1054,7 +1107,7 @@
             // 3. 各ノードの「生存子孫を持つ直近の子ノード」リストを作成
             const activeChildrenMap = new Map();
             Object.values(lineageRegistry).forEach(node => {
-                if (!hasAlive[node.id]) return; // 完全絶滅ノードは無視
+                if (!hasAlive[node.id]) return; 
                 const pId = node.parentId;
                 if (pId && hasAlive[pId]) {
                     if (!activeChildrenMap.has(pId)) activeChildrenMap.set(pId, []);
@@ -1067,10 +1120,10 @@
                 if (!hasAlive[id]) return false;
                 if ((counts[id] || 0) > 0) return true; 
                 const node = lineageRegistry[id];
-                if (!node || node.parentId === null) return true; // ルートノード
+                if (!node || node.parentId === null) return true; 
                 const children = activeChildrenMap.get(id) || [];
-                if (children.length >= 2) return true; // 分岐点
-                return false; // 単なる一本道の絶滅中間ノード -> スキップ対象
+                if (children.length >= 2) return true; 
+                return false; 
             }
 
             // 5. 中間絶滅ノードをスキップして、最寄りの重要親ノードを探索する関数
@@ -1115,12 +1168,16 @@
                 const textColor = aliveCount > 0 ? (isSelected ? '#f1c40f' : '#fff') : '#777';
                 const countColor = aliveCount > 0 ? '#aaa' : '#555';
 
-                // ★色の丸(span)は絶滅に関わらず常に本来の色と不透明度で固定
+                // 編集モードONの場合はテキスト入力ボックス、OFFの場合は通常のラベルテキスト
+                const labelDisplay = isEditMode
+                    ? `<input type="text" class="lineage-label-input" data-id="${root.id}" value="${root.label}" style="background: #111; color: #fff; border: 1px solid #e67e22; border-radius: 3px; padding: 2px 4px; font-size: 11px; width: 110px;">`
+                    : `${root.label}`;
+
                 html += `
                     <div style="margin-bottom: 10px;">
                         <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0;">
                             <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${root.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
-                            <span style="${labelBg} color: ${textColor};">${root.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
+                            <span style="${labelBg} color: ${textColor};">${labelDisplay} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
                         </div>
                         ${buildLineageTreeHtml(root.id, counts, compressedChildrenMap)}
                     </div>`;
@@ -1142,12 +1199,15 @@
                 const textColor = aliveCount > 0 ? (isSelected ? '#f1c40f' : '#fff') : '#777';
                 const countColor = aliveCount > 0 ? '#aaa' : '#555';
 
-                // ★色の丸(span)は絶滅に関わらず常に本来の色と不透明度で固定
+                const labelDisplay = isEditMode
+                    ? `<input type="text" class="lineage-label-input" data-id="${node.id}" value="${node.label}" style="background: #111; color: #fff; border: 1px solid #e67e22; border-radius: 3px; padding: 2px 4px; font-size: 11px; width: 100px;">`
+                    : `${node.label}`;
+
                 html += `
                     <div>
                         <div style="display: flex; align-items: center; gap: 6px; margin: 2px 0;">
                             <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${node.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
-                            <span style="${labelBg} color: ${textColor};">${node.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
+                            <span style="${labelBg} color: ${textColor};">${labelDisplay} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
                         </div>
                         ${buildLineageTreeHtml(node.id, counts, compressedChildrenMap)}
                     </div>`;
@@ -1217,7 +1277,8 @@
             countBadge.textContent = creatures.length;
             updateStatusPanel();
 
-            if (frameCount % 30 === 0) {
+            // 名前編集モード(isEditMode)の入力中は再描画でフォーカスが外れないよう家系図の自動更新をスキップ
+            if (!isEditMode && frameCount % 30 === 0) {
                 updateLineagePanel();
             }
 
