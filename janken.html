@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (系統維持・剪定対応版)</title>
+    <title>じゃんけん生態系シミュレーター (系統維持・表示修正版)</title>
     <style>
         body {
             margin: 0;
@@ -1037,7 +1037,7 @@
             });
         }
 
-        // 🌳 完全絶滅のみ剪定し、子孫が生きている親ノードは維持する家系図更新
+        // 🌳 家系図更新処理
         function updateLineagePanel() {
             if (lineagePanel.style.display === 'none') return;
 
@@ -1102,8 +1102,8 @@
             );
             
             const labelBg = isSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px; font-weight: bold;' : '';
+            // 絶滅時は文字色のみグレーにし、親要素全体のopacity指定を排除して子孫へ引き継がせない
             const textColor = isSelected ? '#f1c40f' : (aliveCount === 0 ? '#888' : '#fff');
-            const opacityStyle = aliveCount === 0 ? 'opacity: 0.65;' : '';
             const statusLabel = aliveCount === 0 
                 ? `<span style="color: #e74c3c; font-size: 10px; font-weight: bold;">(絶滅)</span>` 
                 : `<span style="color: #aaa; font-size: 10px;">(${aliveCount}体)</span>`;
@@ -1123,9 +1123,10 @@
             }
 
             return `
-                <div style="margin-bottom: 6px; ${opacityStyle}">
+                <div style="margin-bottom: 6px;">
                     <div style="display: flex; align-items: center; gap: 6px; margin: 2px 0;">
-                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${node.color}; border: 1px solid #fff; flex-shrink: 0; ${aliveCount === 0 ? 'filter: grayscale(80%);' : ''}"></span>
+                        <!-- 色丸は常にオリジナルの遺伝子カラーを保持 -->
+                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${node.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
                         <span style="${labelBg} color: ${textColor};">${node.label} ${statusLabel}</span>
                     </div>
                     ${childrenHtml}
