@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (動的家系図剪定版)</title>
+    <title>じゃんけん生態系シミュレーター (ソート・剪定対応版)</title>
     <style>
         body {
             margin: 0;
@@ -924,7 +924,13 @@
                 else {
                     const initGenes = getInitialGenes();
                     const familyId = `家系 #${++familyCounter}`;
-                    lineageRegistry[familyId] = { id: familyId, parentId: null, label: familyId, color: getCreatureColorString(initGenes) };
+                    lineageRegistry[familyId] = { 
+                        id: familyId, 
+                        parentId: null, 
+                        label: familyId, 
+                        color: getCreatureColorString(initGenes),
+                        order: 0 
+                    };
                     creatures.push(new Creature(x, y, initGenes, familyId, familyId));
                 }
             }
@@ -1031,24 +1037,21 @@
             });
         }
 
-        // 🌳 【最適化】絶滅した枝（拡張性のないノード）を完全自動消去・パイプ接続する家系図更新処理
+        // 🌳 絶滅剪定 ＋ 変異番号昇順ソート機能付き 家系図更新
         function updateLineagePanel() {
             if (lineagePanel.style.display === 'none') return;
 
-            // 1. 生きている個体（count > 0）を系統IDごとにカウント
             const counts = {};
             creatures.forEach(c => counts[c.lineageId] = (counts[c.lineageId] || 0) + 1);
 
             const visibleChildrenMap = new Map();
             const visibleRoots = [];
 
-            // 2. 生存個体が存在する系統だけを抽出し、絶滅した祖先を自動スキップして直接接続
             Object.keys(counts).forEach(lid => {
                 if (counts[lid] <= 0) return;
                 const node = lineageRegistry[lid];
                 if (!node) return;
 
-                // 家系図を親へ遡り、「現在生存している一番近い親」を探す
                 let parentId = node.parentId;
                 let effectiveParentId = null;
                 while (parentId) {
@@ -1074,6 +1077,12 @@
                 lineageContent.innerHTML = `<div class="status-placeholder">画面をクリックして<br>生き物を配置すると<br>ここに系統樹（家系図）が<br>リアルタイムに形成されます。</div>`;
                 return;
             }
+
+            // 【ソート処理】変異番号（order）が若い順に整列
+            visibleRoots.sort((a, b) => (a.order || 0) - (b.order || 0));
+            visibleChildrenMap.forEach(children => {
+                children.sort((a, b) => (a.order || 0) - (b.order || 0));
+            });
 
             let html = '';
             visibleRoots.forEach(root => {
@@ -1166,7 +1175,8 @@
                                 id: clone.lineageId, 
                                 parentId: oldLineageId, 
                                 label: `変異 #${mutationCounter}`, 
-                                color: getCreatureColorString(clone.genes) 
+                                color: getCreatureColorString(clone.genes),
+                                order: mutationCounter // 番号ソート用の基準データ
                             };
                         }
                         nextCreatures.push(clone);
