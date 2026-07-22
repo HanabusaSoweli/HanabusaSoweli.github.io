@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (系統維持・表示修正版)</title>
+    <title>じゃんけん生態系シミュレーター (家系図圧縮版)</title>
     <style>
         body {
             margin: 0;
@@ -924,13 +924,7 @@
                 else {
                     const initGenes = getInitialGenes();
                     const familyId = `家系 #${++familyCounter}`;
-                    lineageRegistry[familyId] = { 
-                        id: familyId, 
-                        parentId: null, 
-                        label: familyId, 
-                        color: getCreatureColorString(initGenes),
-                        order: 0 
-                    };
+                    lineageRegistry[familyId] = { id: familyId, parentId: null, label: familyId, color: getCreatureColorString(initGenes) };
                     creatures.push(new Creature(x, y, initGenes, familyId, familyId));
                 }
             }
@@ -1037,100 +1031,130 @@
             });
         }
 
-        // 🌳 家系図更新処理
+        // ★絶滅ノードの剪定＆一本道ノードの自動スキップ（圧縮）に対応した家系図描画処理
         function updateLineagePanel() {
             if (lineagePanel.style.display === 'none') return;
 
-            // 1. 各系統の「直接の生存個体数」をカウント
-            const directCounts = {};
-            creatures.forEach(c => directCounts[c.lineageId] = (directCounts[c.lineageId] || 0) + 1);
+            // 1. 各ノードの生存個体数をカウント
+            const counts = {};
+            creatures.forEach(c => counts[c.lineageId] = (counts[c.lineageId] || 0) + 1);
 
-            // 2. 親子関係のマップを作成
-            const childrenMap = new Map();
-            const rootNodes = [];
-
-            Object.values(lineageRegistry).forEach(node => {
-                if (!node.parentId) {
-                    rootNodes.push(node);
-                } else {
-                    if (!childrenMap.has(node.parentId)) {
-                        childrenMap.set(node.parentId, []);
+            // 2. 各ノードについて「自身または子孫に生存個体がいるか」を判定 (hasAlive)
+            const hasAlive = {};
+            Object.keys(lineageRegistry).forEach(id => {
+                if ((counts[id] || 0) > 0) {
+                    let curr = id;
+                    while (curr) {
+                        hasAlive[curr] = true;
+                        curr = lineageRegistry[curr] ? lineageRegistry[curr].parentId : null;
                     }
-                    childrenMap.get(node.parentId).push(node);
                 }
             });
 
-            // 3. 再帰的に「自身 ＋ 全子孫の生き残り合計数」を算出
-            const totalCounts = {};
-            function calculateTotalCount(nodeId) {
-                let count = directCounts[nodeId] || 0;
-                const children = childrenMap.get(nodeId) || [];
-                for (const child of children) {
-                    count += calculateTotalCount(child.id);
+            // 3. 各ノードの「生存子孫を持つ直近の子ノード」リストを作成
+            const activeChildrenMap = new Map();
+            Object.values(lineageRegistry).forEach(node => {
+                if (!hasAlive[node.id]) return; // 完全絶滅ノードは無視
+                const pId = node.parentId;
+                if (pId && hasAlive[pId]) {
+                    if (!activeChildrenMap.has(pId)) activeChildrenMap.set(pId, []);
+                    activeChildrenMap.get(pId).push(node);
                 }
-                totalCounts[nodeId] = count;
-                return count;
+            });
+
+            // 4. 家系図上に「表示すべき重要なノード」かを判定する関数
+            // 条件: 生存個体あり OR ルートノード OR 生存子孫を持つ子が2つ以上(分岐点)
+            function isImportantNode(id) {
+                if (!hasAlive[id]) return false;
+                if ((counts[id] || 0) > 0) return true; 
+                const node = lineageRegistry[id];
+                if (!node || node.parentId === null) return true; // ルートノード
+                const children = activeChildrenMap.get(id) || [];
+                if (children.length >= 2) return true; // 分岐点
+                return false; // 単なる一本道の絶滅中間ノード -> スキップ対象
             }
 
-            rootNodes.forEach(root => calculateTotalCount(root.id));
+            // 5. 中間絶滅ノードをスキップして、最寄りの重要親ノードを探索する関数
+            function getEffectiveParentId(id) {
+                let curr = lineageRegistry[id] ? lineageRegistry[id].parentId : null;
+                while (curr) {
+                    if (isImportantNode(curr)) return curr;
+                    curr = lineageRegistry[curr] ? lineageRegistry[curr].parentId : null;
+                }
+                return null;
+            }
 
-            // 子孫含む生き残りが1体以上いるルートノードのみを表示対象に
-            const visibleRoots = rootNodes.filter(root => (totalCounts[root.id] || 0) > 0);
+            // 6. 圧縮された新しい階層構造（ツリー）を構築
+            const compressedChildrenMap = new Map();
+            const compressedRoots = [];
 
-            if (visibleRoots.length === 0) {
+            Object.values(lineageRegistry).forEach(node => {
+                if (!isImportantNode(node.id)) return;
+
+                const effParentId = getEffectiveParentId(node.id);
+                if (effParentId === null) {
+                    compressedRoots.push(node);
+                } else {
+                    if (!compressedChildrenMap.has(effParentId)) {
+                        compressedChildrenMap.set(effParentId, []);
+                    }
+                    compressedChildrenMap.get(effParentId).push(node);
+                }
+            });
+
+            if (compressedRoots.length === 0) {
                 lineageContent.innerHTML = `<div class="status-placeholder">画面をクリックして<br>生き物を配置すると<br>ここに系統樹（家系図）が<br>リアルタイムに形成されます。</div>`;
                 return;
             }
 
-            // ルートノードを変異・発生順に並び替え
-            visibleRoots.sort((a, b) => (a.order || 0) - (b.order || 0));
-
             let html = '';
-            visibleRoots.forEach(root => {
-                html += renderLineageNodeHtml(root, directCounts, totalCounts, childrenMap);
+            compressedRoots.forEach(root => {
+                const aliveCount = counts[root.id] || 0;
+                const isSelected = selectedCreature && (getSelectedHighlightMode() === 'pureLineage' ? (root.id === selectedCreature.lineageId) : (root.id.split('-')[0] === selectedCreature.familyId));
+                
+                const labelBg = isSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px; font-weight: bold;' : '';
+                const textColor = aliveCount > 0 ? (isSelected ? '#f1c40f' : '#fff') : '#777';
+                const countColor = aliveCount > 0 ? '#aaa' : '#555';
+                const iconStyle = aliveCount > 0 ? '' : 'opacity: 0.35; border-color: rgba(255,255,255,0.3);';
+
+                html += `
+                    <div style="margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 6px; margin: 3px 0;">
+                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${root.color}; border: 1px solid #fff; flex-shrink: 0; ${iconStyle}"></span>
+                            <span style="${labelBg} color: ${textColor};">${root.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
+                        </div>
+                        ${buildLineageTreeHtml(root.id, counts, compressedChildrenMap)}
+                    </div>`;
             });
             lineageContent.innerHTML = html;
         }
 
-        // ツリーの各ノードを描画する再帰関数
-        function renderLineageNodeHtml(node, directCounts, totalCounts, childrenMap) {
-            const aliveCount = directCounts[node.id] || 0;
-            const isSelected = selectedCreature && (
-                getSelectedHighlightMode() === 'pureLineage' 
-                    ? (node.id === selectedCreature.lineageId) 
-                    : (node.id.split('-')[0] === selectedCreature.familyId)
-            );
-            
-            const labelBg = isSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px; font-weight: bold;' : '';
-            // 絶滅時は文字色のみグレーにし、親要素全体のopacity指定を排除して子孫へ引き継がせない
-            const textColor = isSelected ? '#f1c40f' : (aliveCount === 0 ? '#888' : '#fff');
-            const statusLabel = aliveCount === 0 
-                ? `<span style="color: #e74c3c; font-size: 10px; font-weight: bold;">(絶滅)</span>` 
-                : `<span style="color: #aaa; font-size: 10px;">(${aliveCount}体)</span>`;
+        // 圧縮構造に対応したツリーHTML出力
+        function buildLineageTreeHtml(parentId, counts, compressedChildrenMap) {
+            const children = compressedChildrenMap.get(parentId) || [];
+            if (children.length === 0) return '';
 
-            // 生き残りの子孫がいる子ノードだけを取り出しソート
-            let children = childrenMap.get(node.id) || [];
-            children = children.filter(child => (totalCounts[child.id] || 0) > 0);
-            children.sort((a, b) => (a.order || 0) - (b.order || 0));
+            let html = '<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px;">';
+            children.forEach(node => {
+                const aliveCount = counts[node.id] || 0;
+                const isSelected = selectedCreature && (getSelectedHighlightMode() === 'pureLineage' ? (node.id === selectedCreature.lineageId) : (node.id.split('-')[0] === selectedCreature.familyId));
+                
+                const labelBg = isSelected ? 'background: rgba(241,196,15,0.15); border-radius: 3px; padding: 0 4px; font-weight: bold;' : '';
+                const textColor = aliveCount > 0 ? (isSelected ? '#f1c40f' : '#fff') : '#777';
+                const countColor = aliveCount > 0 ? '#aaa' : '#555';
+                const iconStyle = aliveCount > 0 ? '' : 'opacity: 0.35; border-color: rgba(255,255,255,0.3);';
 
-            let childrenHtml = '';
-            if (children.length > 0) {
-                childrenHtml += '<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 12px; border-left: 1px dashed #555; margin-left: 4px;">';
-                children.forEach(child => {
-                    childrenHtml += renderLineageNodeHtml(child, directCounts, totalCounts, childrenMap);
-                });
-                childrenHtml += '</div>';
-            }
-
-            return `
-                <div style="margin-bottom: 6px;">
-                    <div style="display: flex; align-items: center; gap: 6px; margin: 2px 0;">
-                        <!-- 色丸は常にオリジナルの遺伝子カラーを保持 -->
-                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${node.color}; border: 1px solid #fff; flex-shrink: 0;"></span>
-                        <span style="${labelBg} color: ${textColor};">${node.label} ${statusLabel}</span>
-                    </div>
-                    ${childrenHtml}
-                </div>`;
+                html += `
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 6px; margin: 2px 0;">
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${node.color}; border: 1px solid #fff; flex-shrink: 0; ${iconStyle}"></span>
+                            <span style="${labelBg} color: ${textColor};">${node.label} <span style="color: ${countColor}; font-size: 10px;">(${aliveCount}体)</span></span>
+                        </div>
+                        ${buildLineageTreeHtml(node.id, counts, compressedChildrenMap)}
+                    </div>`;
+            });
+            html += '</div>';
+            return html;
         }
 
         function loop() {
@@ -1179,8 +1203,7 @@
                                 id: clone.lineageId, 
                                 parentId: oldLineageId, 
                                 label: `変異 #${mutationCounter}`, 
-                                color: getCreatureColorString(clone.genes),
-                                order: mutationCounter
+                                color: getCreatureColorString(clone.genes) 
                             };
                         }
                         nextCreatures.push(clone);
