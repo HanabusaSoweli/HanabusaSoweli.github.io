@@ -57,7 +57,7 @@
         canvas {
             display: block;
             background-color: #111;
-            cursor: pointer;
+            cursor: crosshair;
         }
 
         #statusPanel {
@@ -459,11 +459,11 @@
                 <div class="control-bottom">
                     <!-- 1段目: モード / 速度 / マップ -->
                     <div class="control-row-1">
-                        <!-- 🖱️ モード -->
+                        <!-- 🖱️ モード（創造モードをデフォルト化） -->
                         <div class="control-group-inline">
                             <span>🖱️ モード:</span>
-                            <button class="opt-btn mode-btn active" data-mode="select">👆 選択</button>
-                            <button class="opt-btn mode-btn" data-mode="create">➕ 創造</button>
+                            <button class="opt-btn mode-btn" data-mode="select">👆 選択</button>
+                            <button class="opt-btn mode-btn active" data-mode="create">➕ 創造</button>
                         </div>
 
                         <!-- ⏱️ 速度 -->
@@ -477,7 +477,7 @@
                             <button class="opt-btn speed-btn" data-speed="4">4倍</button>
                         </div>
 
-                        <!-- 🗺️ マップ (更新部分) -->
+                        <!-- 🗺️ マップ -->
                         <div class="control-group-inline">
                             <span>🗺️ マップ:</span>
                             <button class="opt-btn map-scale-btn" data-scale="0.5">1/2倍</button>
@@ -573,7 +573,8 @@
         let isEditMode = false;
         let preEditTimeScale = 1.0;
 
-        let appMode = 'select'; // 'select' または 'create'
+        // 初期モードを創造モード（create）に設定
+        let appMode = 'create';
 
         // 基準（ビューポート）サイズは 800 x 480 で固定
         const BASE_WIDTH = 800;
