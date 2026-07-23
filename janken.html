@@ -441,15 +441,7 @@
                 </div>
 
                 <div class="control-bottom">
-                    <div class="control-group-inline">
-                        <span>🗺️ マップ:</span>
-                        <button class="opt-btn map-scale-btn" data-scale="0.25">1/4倍</button>
-                        <button class="opt-btn map-scale-btn" data-scale="0.5">1/2倍</button>
-                        <button class="opt-btn map-scale-btn active" data-scale="1">1倍</button>
-                        <button class="opt-btn map-scale-btn" data-scale="2">2倍</button>
-                        <button class="opt-btn map-scale-btn" data-scale="4">4倍</button>
-                    </div>
-
+                    <!-- ⏱️ 速度（左側） -->
                     <div class="control-group-inline">
                         <span>⏱️ 速度:</span>
                         <button class="opt-btn speed-btn" data-speed="0">0倍</button>
@@ -458,6 +450,16 @@
                         <button class="opt-btn speed-btn active" data-speed="1">1倍</button>
                         <button class="opt-btn speed-btn" data-speed="2">2倍</button>
                         <button class="opt-btn speed-btn" data-speed="4">4倍</button>
+                    </div>
+
+                    <!-- 🗺️ マップ（右側） -->
+                    <div class="control-group-inline">
+                        <span>🗺️ マップ:</span>
+                        <button class="opt-btn map-scale-btn" data-scale="0.25">1/4倍</button>
+                        <button class="opt-btn map-scale-btn" data-scale="0.5">1/2倍</button>
+                        <button class="opt-btn map-scale-btn active" data-scale="1">1倍</button>
+                        <button class="opt-btn map-scale-btn" data-scale="2">2倍</button>
+                        <button class="opt-btn map-scale-btn" data-scale="4">4倍</button>
                     </div>
                     
                     <div style="display: flex; gap: 6px;">
@@ -574,7 +576,7 @@
             const newWorldWidth = BASE_WIDTH * newScale;
             const newWorldHeight = BASE_HEIGHT * newScale;
 
-            // 生き物の世界座標を比率に応じて移動（画面上の見た目の位置関係はキープ）
+            // 生き物の世界座標を比率に応じて移動
             creatures.forEach(c => {
                 c.x *= ratio;
                 c.y *= ratio;
@@ -685,7 +687,7 @@
         class Creature {
             constructor(x, y, genes, familyId = null, lineageId = null) {
                 this.id = ++creatureIdCounter;
-                this.x = x; // 世界座標
+                this.x = x; 
                 this.y = y;
                 this.radius = 8;
                 
@@ -761,7 +763,6 @@
             }
 
             draw(isHighlighted, mapScale) {
-                // マップ倍率（mapScale）に応じてキャンバス画面への描画座標・見た目・文字を縮小/拡大
                 const viewScale = 1 / mapScale; 
                 const screenX = this.x * viewScale;
                 const screenY = this.y * viewScale;
@@ -1031,7 +1032,6 @@
             const clickCanvasX = e.clientX - rect.left;
             const clickCanvasY = e.clientY - rect.top;
 
-            // キャンバス上の表示座標を世界座標へ逆算
             const worldX = clickCanvasX * currentMapScale;
             const worldY = clickCanvasY * currentMapScale;
 
@@ -1294,7 +1294,6 @@
 
             if (selectedCreature && selectedCreature.hp <= 0) selectedCreature = null;
 
-            // 選択された個体の密度判定円の縮小表示
             if (selectedCreature) {
                 const viewScale = 1 / currentMapScale;
                 const screenX = selectedCreature.x * viewScale;
