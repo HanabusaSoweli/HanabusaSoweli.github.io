@@ -289,15 +289,31 @@
             box-sizing: border-box;
         }
 
+        /* 下部エリア（2段レイアウト構造） */
         .control-bottom {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            border-top: 1px solid #444;
+            padding-top: 8px;
+            gap: 8px;
+        }
+
+        .control-row-1 {
             display: flex;
             width: 100%;
             justify-content: space-between;
             align-items: center;
-            border-top: 1px solid #444;
-            padding-top: 8px;
             gap: 8px;
             flex-wrap: wrap;
+        }
+
+        .control-row-2 {
+            display: flex;
+            width: 100%;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 6px;
         }
 
         .control-group-inline {
@@ -441,35 +457,39 @@
                 </div>
 
                 <div class="control-bottom">
-                    <!-- 🖱️ モード（一番左） -->
-                    <div class="control-group-inline">
-                        <span>🖱️ モード:</span>
-                        <button class="opt-btn mode-btn active" data-mode="select">👆 選択</button>
-                        <button class="opt-btn mode-btn" data-mode="create">➕ 創造</button>
+                    <!-- 1段目: モード / 速度 / マップ -->
+                    <div class="control-row-1">
+                        <!-- 🖱️ モード -->
+                        <div class="control-group-inline">
+                            <span>🖱️ モード:</span>
+                            <button class="opt-btn mode-btn active" data-mode="select">👆 選択</button>
+                            <button class="opt-btn mode-btn" data-mode="create">➕ 創造</button>
+                        </div>
+
+                        <!-- ⏱️ 速度 -->
+                        <div class="control-group-inline">
+                            <span>⏱️ 速度:</span>
+                            <button class="opt-btn speed-btn" data-speed="0">0倍</button>
+                            <button class="opt-btn speed-btn" data-speed="0.25">1/4</button>
+                            <button class="opt-btn speed-btn" data-speed="0.5">1/2</button>
+                            <button class="opt-btn speed-btn active" data-speed="1">1倍</button>
+                            <button class="opt-btn speed-btn" data-speed="2">2倍</button>
+                            <button class="opt-btn speed-btn" data-speed="4">4倍</button>
+                        </div>
+
+                        <!-- 🗺️ マップ -->
+                        <div class="control-group-inline">
+                            <span>🗺️ マップ:</span>
+                            <button class="opt-btn map-scale-btn" data-scale="0.25">1/4倍</button>
+                            <button class="opt-btn map-scale-btn" data-scale="0.5">1/2倍</button>
+                            <button class="opt-btn map-scale-btn active" data-scale="1">1倍</button>
+                            <button class="opt-btn map-scale-btn" data-scale="2">2倍</button>
+                            <button class="opt-btn map-scale-btn" data-scale="4">4倍</button>
+                        </div>
                     </div>
 
-                    <!-- ⏱️ 速度 -->
-                    <div class="control-group-inline">
-                        <span>⏱️ 速度:</span>
-                        <button class="opt-btn speed-btn" data-speed="0">0倍</button>
-                        <button class="opt-btn speed-btn" data-speed="0.25">1/4</button>
-                        <button class="opt-btn speed-btn" data-speed="0.5">1/2</button>
-                        <button class="opt-btn speed-btn active" data-speed="1">1倍</button>
-                        <button class="opt-btn speed-btn" data-speed="2">2倍</button>
-                        <button class="opt-btn speed-btn" data-speed="4">4倍</button>
-                    </div>
-
-                    <!-- 🗺️ マップ -->
-                    <div class="control-group-inline">
-                        <span>🗺️ マップ:</span>
-                        <button class="opt-btn map-scale-btn" data-scale="0.25">1/4倍</button>
-                        <button class="opt-btn map-scale-btn" data-scale="0.5">1/2倍</button>
-                        <button class="opt-btn map-scale-btn active" data-scale="1">1倍</button>
-                        <button class="opt-btn map-scale-btn" data-scale="2">2倍</button>
-                        <button class="opt-btn map-scale-btn" data-scale="4">4倍</button>
-                    </div>
-                    
-                    <div style="display: flex; gap: 6px;">
+                    <!-- 2段目: 一番右寄せ（家系図 / 名前編集 / クリア） -->
+                    <div class="control-row-2">
                         <button id="toggleLineageBtn" class="opt-btn">🌳 家系図: 非表示</button>
                         <button id="toggleEditNameBtn" class="opt-btn">✏️ 名前編集: OFF</button>
                         <button id="clearBtn">クリア</button>
