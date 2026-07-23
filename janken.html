@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>じゃんけん生態系シミュレーター (家系図圧縮＆マップサイズ変更版)</title>
+    <title>じゃんけん生態系シミュレーター (全画面フィット・マップ縮小版)</title>
     <style>
         body {
             margin: 0;
@@ -42,10 +42,11 @@
             align-items: flex-start;
         }
 
+        /* スクロールを完全に無くし、固定領域に収める */
         #canvasContainer {
             width: 800px;
             height: 480px;
-            overflow: auto;
+            overflow: hidden; 
             border: 2px solid #555;
             background-color: #111;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
@@ -543,10 +544,10 @@
         let isEditMode = false;
         let preEditTimeScale = 1.0;
 
-        // マップサイズの基準設定
+        // 基準（ビューポート）サイズは 800 x 480 で固定
         const BASE_WIDTH = 800;
         const BASE_HEIGHT = 480;
-        let currentMapScale = 1.0;
+        let currentMapScale = 1.0; // マップ倍率 (0.25 ~ 4.0)
 
         let currentCrowdRadius = 50;
         let currentCrowdLimit = 20;
@@ -565,23 +566,22 @@
         let lastSelectedCreatureId = null;
         let frameCount = 0; 
 
-        // 🗺️ マップサイズ変更関数
+        // 🗺️ マップサイズ変更関数（ズーム方式：キャンバス枠サイズは変えずに全域を縮小/拡大 fit）
         function changeMapScale(newScale) {
             if (newScale === currentMapScale) return;
             const ratio = newScale / currentMapScale;
 
-            // キャンバスサイズ更新
-            canvas.width = BASE_WIDTH * newScale;
-            canvas.height = BASE_HEIGHT * newScale;
+            const newWorldWidth = BASE_WIDTH * newScale;
+            const newWorldHeight = BASE_HEIGHT * newScale;
 
-            // 全生き物の座標を拡大率に応じて移動（相対位置の維持）
+            // 生き物の世界座標を比率に応じて移動（画面上の見た目の位置関係はキープ）
             creatures.forEach(c => {
                 c.x *= ratio;
                 c.y *= ratio;
 
-                // 盤面を小さくした際にはみ出さないように枠内へ補正
-                c.x = Math.max(c.radius, Math.min(canvas.width - c.radius, c.x));
-                c.y = Math.max(c.radius, Math.min(canvas.height - c.radius, c.y));
+                // 新しい世界領域からはみ出さないよう収める
+                c.x = Math.max(c.radius, Math.min(newWorldWidth - c.radius, c.x));
+                c.y = Math.max(c.radius, Math.min(newWorldHeight - c.radius, c.y));
             });
 
             currentMapScale = newScale;
@@ -685,10 +685,9 @@
         class Creature {
             constructor(x, y, genes, familyId = null, lineageId = null) {
                 this.id = ++creatureIdCounter;
-                this.x = x;
+                this.x = x; // 世界座標
                 this.y = y;
                 this.radius = 8;
-                this.mass = 1;
                 
                 const angle = Math.random() * Math.PI * 2;
                 const speed = (1 + Math.random() * 2) * SPEED_MULT; 
@@ -721,14 +720,17 @@
                 return this.simulatedAge < 1500; 
             }
 
-            update(simDt, allCreatures) {
+            update(simDt, allCreatures, mapScale) {
                 this.x += this.vx * timeScale;
                 this.y += this.vy * timeScale;
 
+                const worldWidth = BASE_WIDTH * mapScale;
+                const worldHeight = BASE_HEIGHT * mapScale;
+
                 if (this.x - this.radius < 0) { this.x = this.radius; this.vx *= -1; }
-                if (this.x + this.radius > canvas.width) { this.x = canvas.width - this.radius; this.vx *= -1; }
+                if (this.x + this.radius > worldWidth) { this.x = worldWidth - this.radius; this.vx *= -1; }
                 if (this.y - this.radius < 0) { this.y = this.radius; this.vy *= -1; }
-                if (this.y + this.radius > canvas.height) { this.y = canvas.height - this.radius; this.vy *= -1; }
+                if (this.y + this.radius > worldHeight) { this.y = worldHeight - this.radius; this.vy *= -1; }
 
                 this.simulatedAge += simDt;
 
@@ -758,15 +760,21 @@
                 }
             }
 
-            draw(isHighlighted) {
+            draw(isHighlighted, mapScale) {
+                // マップ倍率（mapScale）に応じてキャンバス画面への描画座標・見た目・文字を縮小/拡大
+                const viewScale = 1 / mapScale; 
+                const screenX = this.x * viewScale;
+                const screenY = this.y * viewScale;
+                const screenRadius = Math.max(1.5, this.radius * viewScale);
+
                 ctx.save();
                 const baseColorStr = getCreatureColorString(this.genes);
 
                 if (isHighlighted) {
                     ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius + 6, 0, Math.PI * 2);
+                    ctx.arc(screenX, screenY, screenRadius + Math.max(2, 6 * viewScale), 0, Math.PI * 2);
                     ctx.fillStyle = baseColorStr.replace('rgb', 'rgba').replace(')', ', 0.45)'); 
-                    ctx.shadowBlur = 10;
+                    ctx.shadowBlur = 10 * viewScale;
                     ctx.shadowColor = baseColorStr;
                     ctx.fill();
                     ctx.closePath();
@@ -777,18 +785,19 @@
                 if (invincible) ctx.globalAlpha = 0.4; 
 
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.arc(screenX, screenY, screenRadius, 0, Math.PI * 2);
                 ctx.fillStyle = baseColorStr;
                 ctx.fill();
                 ctx.strokeStyle = invincible ? '#f1c40f' : '#fff';
-                ctx.lineWidth = invincible ? 1.5 : 1;
+                ctx.lineWidth = Math.max(0.5, 1 * viewScale);
                 ctx.stroke();
                 ctx.closePath();
 
+                const fontSize = Math.max(6, Math.round(10 * viewScale));
                 ctx.fillStyle = invincible ? '#f1c40f' : '#ccc';
-                ctx.font = '10px sans-serif';
+                ctx.font = `${fontSize}px sans-serif`;
                 ctx.textAlign = 'center';
-                ctx.fillText(Math.round(this.hp), this.x, this.y - this.radius - 4);
+                ctx.fillText(Math.round(this.hp), screenX, screenY - screenRadius - Math.max(2, 4 * viewScale));
                 ctx.restore(); 
             }
 
@@ -1019,14 +1028,19 @@
 
         canvas.addEventListener('mousedown', (e) => {
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            let closestDist = 20; 
+            const clickCanvasX = e.clientX - rect.left;
+            const clickCanvasY = e.clientY - rect.top;
+
+            // キャンバス上の表示座標を世界座標へ逆算
+            const worldX = clickCanvasX * currentMapScale;
+            const worldY = clickCanvasY * currentMapScale;
+
+            let closestDist = 20 * currentMapScale; 
             let clickedCreature = null;
 
             for (let i = 0; i < creatures.length; i++) {
                 const c = creatures[i];
-                const dist = Math.hypot(c.x - x, c.y - y);
+                const dist = Math.hypot(c.x - worldX, c.y - worldY);
                 if (dist < closestDist) { closestDist = dist; clickedCreature = c; }
             }
 
@@ -1037,7 +1051,7 @@
                     const initGenes = getInitialGenes();
                     const familyId = `家系 #${++familyCounter}`;
                     lineageRegistry[familyId] = { id: familyId, parentId: null, label: familyId, color: getCreatureColorString(initGenes), isCustomNamed: false };
-                    creatures.push(new Creature(x, y, initGenes, familyId, familyId));
+                    creatures.push(new Creature(worldX, worldY, initGenes, familyId, familyId));
                 }
             }
         });
@@ -1046,8 +1060,10 @@
             if (e.target && e.target.id === 'boostBtn' && selectedCreature) {
                 const c = selectedCreature;
                 const angle = Math.random() * Math.PI * 2;
-                let cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, c.x + Math.cos(angle) * c.radius * 1.5));
-                let cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, c.y + Math.sin(angle) * c.radius * 1.5));
+                const worldWidth = BASE_WIDTH * currentMapScale;
+                const worldHeight = BASE_HEIGHT * currentMapScale;
+                let cloneX = Math.max(c.radius, Math.min(worldWidth - c.radius, c.x + Math.cos(angle) * c.radius * 1.5));
+                let cloneY = Math.max(c.radius, Math.min(worldHeight - c.radius, c.y + Math.sin(angle) * c.radius * 1.5));
                 creatures.push(new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.lineageId));
             }
         });
@@ -1278,8 +1294,15 @@
 
             if (selectedCreature && selectedCreature.hp <= 0) selectedCreature = null;
 
+            // 選択された個体の密度判定円の縮小表示
             if (selectedCreature) {
-                ctx.save(); ctx.beginPath(); ctx.arc(selectedCreature.x, selectedCreature.y, currentCrowdRadius, 0, Math.PI * 2); 
+                const viewScale = 1 / currentMapScale;
+                const screenX = selectedCreature.x * viewScale;
+                const screenY = selectedCreature.y * viewScale;
+                const screenCrowdRadius = currentCrowdRadius * viewScale;
+
+                ctx.save(); ctx.beginPath(); 
+                ctx.arc(screenX, screenY, screenCrowdRadius, 0, Math.PI * 2); 
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.02)'; ctx.fill();
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]); ctx.stroke(); ctx.restore();
             }
@@ -1288,17 +1311,19 @@
 
             for (let i = 0; i < creatures.length; i++) {
                 const c = creatures[i];
-                c.update(simDt, creatures);
+                c.update(simDt, creatures, currentMapScale);
                 
                 let isHighlighted = selectedCreature && (currentMode === 'pureLineage' ? (c.lineageId === selectedCreature.lineageId) : (c.familyId === selectedCreature.familyId));
 
                 if (c.hp > 0) {
-                    c.draw(isHighlighted); 
+                    c.draw(isHighlighted, currentMapScale); 
                     if (c.hp >= 15) {
                         c.hp -= 5; 
                         const angle = Math.random() * Math.PI * 2;
-                        let cloneX = Math.max(c.radius, Math.min(canvas.width - c.radius, c.x + Math.cos(angle) * c.radius * 1.5));
-                        let cloneY = Math.max(c.radius, Math.min(canvas.height - c.radius, c.y + Math.sin(angle) * c.radius * 1.5));
+                        const worldWidth = BASE_WIDTH * currentMapScale;
+                        const worldHeight = BASE_HEIGHT * currentMapScale;
+                        let cloneX = Math.max(c.radius, Math.min(worldWidth - c.radius, c.x + Math.cos(angle) * c.radius * 1.5));
+                        let cloneY = Math.max(c.radius, Math.min(worldHeight - c.radius, c.y + Math.sin(angle) * c.radius * 1.5));
                         const clone = new Creature(cloneX, cloneY, { ...c.genes }, c.familyId, c.lineageId);
 
                         if (Math.random() < (parseFloat(mutRateSlider.value) / 100)) {
