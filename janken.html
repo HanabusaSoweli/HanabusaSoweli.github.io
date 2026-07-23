@@ -57,7 +57,7 @@
         canvas {
             display: block;
             background-color: #111;
-            cursor: crosshair;
+            cursor: pointer;
         }
 
         #statusPanel {
@@ -441,7 +441,14 @@
                 </div>
 
                 <div class="control-bottom">
-                    <!-- ⏱️ 速度（左側） -->
+                    <!-- 🖱️ モード（一番左） -->
+                    <div class="control-group-inline">
+                        <span>🖱️ モード:</span>
+                        <button class="opt-btn mode-btn active" data-mode="select">👆 選択</button>
+                        <button class="opt-btn mode-btn" data-mode="create">➕ 創造</button>
+                    </div>
+
+                    <!-- ⏱️ 速度 -->
                     <div class="control-group-inline">
                         <span>⏱️ 速度:</span>
                         <button class="opt-btn speed-btn" data-speed="0">0倍</button>
@@ -452,7 +459,7 @@
                         <button class="opt-btn speed-btn" data-speed="4">4倍</button>
                     </div>
 
-                    <!-- 🗺️ マップ（右側） -->
+                    <!-- 🗺️ マップ -->
                     <div class="control-group-inline">
                         <span>🗺️ マップ:</span>
                         <button class="opt-btn map-scale-btn" data-scale="0.25">1/4倍</button>
@@ -490,14 +497,14 @@
                     </div>
                     <div id="statusContent">
                         <div class="status-placeholder">
-                            生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の一族全員が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。
+                            生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の一族全員が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除。
                         </div>
                     </div>
                 </div>
             </div>
             
             <div id="info">
-                【操作方法】設定を行い、<strong style="color: #fff;">画面をクリックして配置 / 個体を選択</strong>してください。<br>
+                【操作方法】モードを切り替えて操作します。<strong style="color: #fff;">【選択モード】個体を選択/解除</strong> | <strong style="color: #fff;">【創造モード】空地をクリックして新規配置</strong><br>
                 現在の個体数: <span id="creatureCount" class="count-badge">0</span> 体 | 
                 <span style="color: #e74c3c; font-weight: bold;">※ 指定の判定半径内に制限以上の個体が高密度に集まると、その瞬間「即死」して消滅します。</span>
             </div>
@@ -546,6 +553,8 @@
         let isEditMode = false;
         let preEditTimeScale = 1.0;
 
+        let appMode = 'select'; // 'select' または 'create'
+
         // 基準（ビューポート）サイズは 800 x 480 で固定
         const BASE_WIDTH = 800;
         const BASE_HEIGHT = 480;
@@ -568,7 +577,18 @@
         let lastSelectedCreatureId = null;
         let frameCount = 0; 
 
-        // 🗺️ マップサイズ変更関数（ズーム方式：キャンバス枠サイズは変えずに全域を縮小/拡大 fit）
+        // 🖱️ モード変更ボタンイベント
+        const modeBtns = document.querySelectorAll('.mode-btn');
+        modeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                modeBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                appMode = btn.dataset.mode;
+                canvas.style.cursor = appMode === 'create' ? 'crosshair' : 'pointer';
+            });
+        });
+
+        // 🗺️ マップサイズ変更関数
         function changeMapScale(newScale) {
             if (newScale === currentMapScale) return;
             const ratio = newScale / currentMapScale;
@@ -576,12 +596,10 @@
             const newWorldWidth = BASE_WIDTH * newScale;
             const newWorldHeight = BASE_HEIGHT * newScale;
 
-            // 生き物の世界座標を比率に応じて移動
             creatures.forEach(c => {
                 c.x *= ratio;
                 c.y *= ratio;
 
-                // 新しい世界領域からはみ出さないよう収める
                 c.x = Math.max(c.radius, Math.min(newWorldWidth - c.radius, c.x));
                 c.y = Math.max(c.radius, Math.min(newWorldHeight - c.radius, c.y));
             });
@@ -589,7 +607,6 @@
             currentMapScale = newScale;
         }
 
-        // マップサイズ変更ボタンイベント登録
         const mapScaleBtns = document.querySelectorAll('.map-scale-btn');
         mapScaleBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1044,14 +1061,16 @@
                 if (dist < closestDist) { closestDist = dist; clickedCreature = c; }
             }
 
-            if (clickedCreature) { selectedCreature = clickedCreature; }
-            else {
-                if (selectedCreature) { selectedCreature = null; }
-                else {
+            if (clickedCreature) { 
+                selectedCreature = clickedCreature; 
+            } else {
+                if (appMode === 'create') {
                     const initGenes = getInitialGenes();
                     const familyId = `家系 #${++familyCounter}`;
                     lineageRegistry[familyId] = { id: familyId, parentId: null, label: familyId, color: getCreatureColorString(initGenes), isCustomNamed: false };
                     creatures.push(new Creature(worldX, worldY, initGenes, familyId, familyId));
+                } else {
+                    selectedCreature = null;
                 }
             }
         });
@@ -1114,7 +1133,7 @@
         function updateStatusPanel() {
             if (!selectedCreature) {
                 if (lastSelectedCreatureId !== null) {
-                    statusContent.innerHTML = `<div class="status-placeholder">生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の一族全員が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除 / 新規配置。</div>`;
+                    statusContent.innerHTML = `<div class="status-placeholder">生き物をクリックすると<br>詳細なステータスと<br>指定した範囲の一族全員が<br>ぼんやり光り輝きます。<br><br>何もない場所をクリックで<br>選択解除。</div>`;
                     lastSelectedCreatureId = null;
                 }
                 return;
@@ -1306,13 +1325,13 @@
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]); ctx.stroke(); ctx.restore();
             }
 
-            const currentMode = getSelectedHighlightMode();
+            const currentHighlightMode = getSelectedHighlightMode();
 
             for (let i = 0; i < creatures.length; i++) {
                 const c = creatures[i];
                 c.update(simDt, creatures, currentMapScale);
                 
-                let isHighlighted = selectedCreature && (currentMode === 'pureLineage' ? (c.lineageId === selectedCreature.lineageId) : (c.familyId === selectedCreature.familyId));
+                let isHighlighted = selectedCreature && (currentHighlightMode === 'pureLineage' ? (c.lineageId === selectedCreature.lineageId) : (c.familyId === selectedCreature.familyId));
 
                 if (c.hp > 0) {
                     c.draw(isHighlighted, currentMapScale); 
