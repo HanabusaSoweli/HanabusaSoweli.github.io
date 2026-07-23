@@ -477,18 +477,18 @@
                             <button class="opt-btn speed-btn" data-speed="4">4倍</button>
                         </div>
 
-                        <!-- 🗺️ マップ -->
+                        <!-- 🗺️ マップ (更新部分) -->
                         <div class="control-group-inline">
                             <span>🗺️ マップ:</span>
-                            <button class="opt-btn map-scale-btn" data-scale="0.25">1/4倍</button>
                             <button class="opt-btn map-scale-btn" data-scale="0.5">1/2倍</button>
+                            <button class="opt-btn map-scale-btn" data-scale="0.6666666666666666">2/3倍</button>
                             <button class="opt-btn map-scale-btn active" data-scale="1">1倍</button>
+                            <button class="opt-btn map-scale-btn" data-scale="1.5">1.5倍</button>
                             <button class="opt-btn map-scale-btn" data-scale="2">2倍</button>
-                            <button class="opt-btn map-scale-btn" data-scale="4">4倍</button>
                         </div>
                     </div>
 
-                    <!-- 2段目: 一番右寄せ（家系図 / 名前編集 / クリア） -->
+                    <!-- 2段目: 家系図 / 名前編集 / クリア -->
                     <div class="control-row-2">
                         <button id="toggleLineageBtn" class="opt-btn">🌳 家系図: 非表示</button>
                         <button id="toggleEditNameBtn" class="opt-btn">✏️ 名前編集: OFF</button>
@@ -578,7 +578,7 @@
         // 基準（ビューポート）サイズは 800 x 480 で固定
         const BASE_WIDTH = 800;
         const BASE_HEIGHT = 480;
-        let currentMapScale = 1.0; // マップ倍率 (0.25 ~ 4.0)
+        let currentMapScale = 1.0; // マップ倍率 (0.5 ~ 2.0)
 
         let currentCrowdRadius = 50;
         let currentCrowdLimit = 20;
@@ -1072,26 +1072,28 @@
             const worldX = clickCanvasX * currentMapScale;
             const worldY = clickCanvasY * currentMapScale;
 
-            let closestDist = 20 * currentMapScale; 
-            let clickedCreature = null;
+            if (appMode === 'select') {
+                // 選択モード：近くの個体を判定
+                let closestDist = 20 * currentMapScale; 
+                let clickedCreature = null;
 
-            for (let i = 0; i < creatures.length; i++) {
-                const c = creatures[i];
-                const dist = Math.hypot(c.x - worldX, c.y - worldY);
-                if (dist < closestDist) { closestDist = dist; clickedCreature = c; }
-            }
+                for (let i = 0; i < creatures.length; i++) {
+                    const c = creatures[i];
+                    const dist = Math.hypot(c.x - worldX, c.y - worldY);
+                    if (dist < closestDist) { closestDist = dist; clickedCreature = c; }
+                }
 
-            if (clickedCreature) { 
-                selectedCreature = clickedCreature; 
-            } else {
-                if (appMode === 'create') {
-                    const initGenes = getInitialGenes();
-                    const familyId = `家系 #${++familyCounter}`;
-                    lineageRegistry[familyId] = { id: familyId, parentId: null, label: familyId, color: getCreatureColorString(initGenes), isCustomNamed: false };
-                    creatures.push(new Creature(worldX, worldY, initGenes, familyId, familyId));
+                if (clickedCreature) { 
+                    selectedCreature = clickedCreature; 
                 } else {
                     selectedCreature = null;
                 }
+            } else if (appMode === 'create') {
+                // 創造モード：個体選択は行わず、新規生成のみ実行
+                const initGenes = getInitialGenes();
+                const familyId = `家系 #${++familyCounter}`;
+                lineageRegistry[familyId] = { id: familyId, parentId: null, label: familyId, color: getCreatureColorString(initGenes), isCustomNamed: false };
+                creatures.push(new Creature(worldX, worldY, initGenes, familyId, familyId));
             }
         });
 
