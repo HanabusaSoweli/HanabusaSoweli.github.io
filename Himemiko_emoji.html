@@ -51,7 +51,7 @@
       margin-bottom: 16px;
       min-height: 48px;
       word-break: break-all;
-      white-space: pre-wrap;
+      white-space: pre-wrap; /* スペース付きの目を正しく描画 */
     }
 
     .copy-btn {
@@ -86,20 +86,21 @@
 
     .part-options {
       display: grid;
-      grid-template-columns: repeat( auto-fit, minmax(60px, 1fr) );
+      grid-template-columns: repeat( auto-fit, minmax(65px, 1fr) );
       gap: 8px;
+      margin-bottom: 8px;
     }
 
     .part-btn {
       background-color: white;
       border: 1px solid var(--border-color);
       border-radius: 6px;
-      padding: 10px;
+      padding: 10px 4px;
       font-size: 1.2rem;
       font-family: "Mona", "IPAMonaGothic", "MS PGothic", sans-serif;
       cursor: pointer;
       transition: all 0.2s;
-      white-space: pre;
+      white-space: pre; /* ボタン内のスペースを維持 */
     }
 
     .part-btn:hover {
@@ -146,11 +147,11 @@
     <button class="copy-btn" id="copyBtn">クリップボードにコピー</button>
 
     <!-- 左目の選択エリア -->
-    <div class="section-title">左目パーツを選択</div>
+    <div class="section-title">左目を選択</div>
     <div class="part-options" id="leftEyeOptions"></div>
 
     <!-- 右目の選択エリア -->
-    <div class="section-title">右目パーツを選択</div>
+    <div class="section-title">右目を選択</div>
     <div class="part-options" id="rightEyeOptions"></div>
 
     <!-- 口の選択エリア -->
@@ -165,23 +166,22 @@
     // 絵文字の固定パーツと可変パーツの設定
     const state = {
       leftEar: '<⸊༼',
-      leftEye: 'ᇂ',     // デフォルト
-      hair: '\u207d',   // 髪の毛 (⁽)
-      mouth: '\u032b',  // 口の組み合わせ文字 (デフォルト: ̫)
-      rightEye: 'ᇂ',    // デフォルト
+      leftEye: '\u11c2',  // デフォルト: ᇂ
+      hair: '\u207d',     // 髪の毛 (⁽)
+      mouth: '\u032b',    // デフォルト: ̫
+      rightEye: '\u11c2', // デフォルト: ᇂ
       rightEar: '༽⸉>'
     };
 
-    // 目のパーツ選択肢 (デフォルトの ᇂ + 追加分)
+    // 目の選択肢リスト
     const eyeList = [
-      'ᇂ',
-      '\u03c2',
-      '\u03bc',
-      '\u0020\u003e\u0020',
-      '\u0020\u003c\u0020'
+      { label: 'ᇂ', value: '\u11c2' },
+      { label: 'ᆼ', value: '\u11bc' },
+      { label: ' > ', value: '\u0020\u003e\u0020' },
+      { label: ' < ', value: '\u0020\u003c\u0020' }
     ];
 
-    // 口のパーツ選択肢
+    // 口の選択肢リスト
     const mouthList = [
       '\u032b', // ̫
       '\u032d', // ̭
@@ -204,16 +204,16 @@
       return fullEmoji;
     }
 
-    // 目のボタン一覧を生成する汎用関数
+    // 目のボタン一覧を生成（左目・右目共通関数）
     function initEyeOptions(containerEl, eyeKey) {
       containerEl.innerHTML = '';
-      eyeList.forEach(eye => {
+      eyeList.forEach(item => {
         const btn = document.createElement('button');
-        btn.className = `part-btn ${eye === state[eyeKey] ? 'active' : ''}`;
-        btn.textContent = eye;
+        btn.className = `part-btn ${item.value === state[eyeKey] ? 'active' : ''}`;
+        btn.textContent = item.label;
 
         btn.addEventListener('click', () => {
-          state[eyeKey] = eye;
+          state[eyeKey] = item.value;
 
           // アクティブ表示の切り替え
           containerEl.querySelectorAll('.part-btn').forEach(b => b.classList.remove('active'));
@@ -231,15 +231,12 @@
       mouthList.forEach(m => {
         const btn = document.createElement('button');
         btn.className = `part-btn ${m === state.mouth ? 'active' : ''}`;
-        
-        // ボタン上では髪の毛パーツ(\u207d)と結合させて表示
         btn.textContent = `${state.hair}${m}`;
         
         btn.addEventListener('click', () => {
           state.mouth = m;
           
-          // アクティブ表示の切り替え
-          mouthOptionsEl.querySelectorAll('.part-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('#mouthOptions .part-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
 
           renderEmoji();
@@ -255,7 +252,6 @@
         await navigator.clipboard.writeText(textToCopy);
         showToast();
       } catch (err) {
-        // フォールバック処理
         const textarea = document.createElement('textarea');
         textarea.value = textToCopy;
         document.body.appendChild(textarea);
