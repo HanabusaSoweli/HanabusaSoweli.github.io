@@ -6,7 +6,8 @@
   <title>ヒメミコ絵文字ジェネレーター</title>
   <style>
     :root {
-      --primary-color: #e91e63;
+      --copy-bg: #F0B0B0;
+      --part-active-bg: #B0B0F0;
       --bg-color: #f9f9fb;
       --card-bg: #ffffff;
       --text-color: #333333;
@@ -37,7 +38,7 @@
       text-align: center;
       margin-top: 0;
       margin-bottom: 20px;
-      color: var(--primary-color);
+      color: #6a6a9f;
     }
 
     .preview-box {
@@ -56,20 +57,20 @@
 
     .copy-btn {
       width: 100%;
-      background-color: var(--primary-color);
-      color: white;
+      background-color: var(--copy-bg);
+      color: #333333;
       border: none;
       border-radius: 6px;
       padding: 12px;
       font-size: 1rem;
       font-weight: bold;
       cursor: pointer;
-      transition: background-color 0.2s, transform 0.1s;
+      transition: opacity 0.2s, transform 0.1s;
       margin-bottom: 20px;
     }
 
     .copy-btn:hover {
-      opacity: 0.9;
+      opacity: 0.85;
     }
 
     .copy-btn:active {
@@ -98,20 +99,22 @@
       padding: 10px 4px;
       font-size: 1.2rem;
       font-family: Arial, sans-serif;
+      color: var(--text-color);
       cursor: pointer;
       transition: all 0.2s;
       white-space: pre;
     }
 
     .part-btn:hover {
-      border-color: var(--primary-color);
-      background-color: #fff0f5;
+      border-color: var(--part-active-bg);
+      background-color: #f0f0ff;
     }
 
     .part-btn.active {
-      background-color: var(--primary-color);
-      color: white;
-      border-color: var(--primary-color);
+      background-color: var(--part-active-bg);
+      color: #333333;
+      border-color: var(--part-active-bg);
+      font-weight: bold;
     }
 
     .toast {
