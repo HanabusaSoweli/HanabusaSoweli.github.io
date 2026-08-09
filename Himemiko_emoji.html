@@ -93,7 +93,7 @@
       border: 1px solid var(--border-color);
       border-radius: 6px;
       padding: 10px;
-      font-size: 1.1rem;
+      font-size: 1.3rem;
       font-family: "Mona", "IPAMonaGothic", "MS PGothic", sans-serif;
       cursor: pointer;
       transition: all 0.2s;
@@ -155,14 +155,19 @@
     const state = {
       leftEar: '<⸊༼',
       leftEye: 'ᇂ',
-      mouth: '⁽̫', // デフォルト値
+      hair: '\u207d',  // 髪の毛 (⁽)
+      mouth: '\u032b', // 口の組み合わせ文字 (デフォルト: ̫)
       rightEye: 'ᇂ',
       rightEar: '༽⸉>'
     };
 
-    // 口のパーツ選択肢（必要に応じて追加可能）
+    // 指定された口パーツ（結合文字）のリスト
     const mouthList = [
-      '⁽̫', '∀', '_', '.', 'ω', '⑉', '⍥', '𑂰', 'x', 'o'
+      '\u032b', // ̫
+      '\u032d', // ̭
+      '\u032c', // ̬
+      '\u0320', // ̠
+      '\u0325'  // ̥
     ];
 
     const previewEl = document.getElementById('emojiPreview');
@@ -172,7 +177,7 @@
 
     // プレビューの更新
     function renderEmoji() {
-      const fullEmoji = `${state.leftEar}${state.leftEye}${state.mouth}${state.rightEye}${state.rightEar}`;
+      const fullEmoji = `${state.leftEar}${state.leftEye}${state.hair}${state.mouth}${state.rightEye}${state.rightEar}`;
       previewEl.textContent = fullEmoji;
       return fullEmoji;
     }
@@ -183,7 +188,10 @@
       mouthList.forEach(m => {
         const btn = document.createElement('button');
         btn.className = `part-btn ${m === state.mouth ? 'active' : ''}`;
-        btn.textContent = m;
+        
+        // ボタン上では髪の毛パーツ(\u207d)と結合させて見やすく表示
+        btn.textContent = `${state.hair}${m}`;
+        
         btn.addEventListener('click', () => {
           state.mouth = m;
           
