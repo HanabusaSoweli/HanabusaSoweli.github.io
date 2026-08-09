@@ -51,6 +51,7 @@
       margin-bottom: 16px;
       min-height: 48px;
       word-break: break-all;
+      white-space: pre-wrap;
     }
 
     .copy-btn {
@@ -64,7 +65,7 @@
       font-weight: bold;
       cursor: pointer;
       transition: background-color 0.2s, transform 0.1s;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
     .copy-btn:hover {
@@ -77,14 +78,15 @@
 
     .section-title {
       font-weight: bold;
-      margin-bottom: 12px;
+      margin-top: 16px;
+      margin-bottom: 8px;
       font-size: 0.95rem;
       color: #666;
     }
 
     .part-options {
       display: grid;
-      grid-template-columns: repeat( auto-fit, minmax(70px, 1fr) );
+      grid-template-columns: repeat( auto-fit, minmax(60px, 1fr) );
       gap: 8px;
     }
 
@@ -93,10 +95,11 @@
       border: 1px solid var(--border-color);
       border-radius: 6px;
       padding: 10px;
-      font-size: 1.3rem;
+      font-size: 1.2rem;
       font-family: "Mona", "IPAMonaGothic", "MS PGothic", sans-serif;
       cursor: pointer;
       transition: all 0.2s;
+      white-space: pre;
     }
 
     .part-btn:hover {
@@ -142,6 +145,14 @@
     <!-- コピーボタン -->
     <button class="copy-btn" id="copyBtn">クリップボードにコピー</button>
 
+    <!-- 左目の選択エリア -->
+    <div class="section-title">左目パーツを選択</div>
+    <div class="part-options" id="leftEyeOptions"></div>
+
+    <!-- 右目の選択エリア -->
+    <div class="section-title">右目パーツを選択</div>
+    <div class="part-options" id="rightEyeOptions"></div>
+
     <!-- 口の選択エリア -->
     <div class="section-title">口パーツを選択</div>
     <div class="part-options" id="mouthOptions"></div>
@@ -154,14 +165,23 @@
     // 絵文字の固定パーツと可変パーツの設定
     const state = {
       leftEar: '<⸊༼',
-      leftEye: 'ᇂ',
-      hair: '\u207d',  // 髪の毛 (⁽)
-      mouth: '\u032b', // 口の組み合わせ文字 (デフォルト: ̫)
-      rightEye: 'ᇂ',
+      leftEye: 'ᇂ',     // デフォルト
+      hair: '\u207d',   // 髪の毛 (⁽)
+      mouth: '\u032b',  // 口の組み合わせ文字 (デフォルト: ̫)
+      rightEye: 'ᇂ',    // デフォルト
       rightEar: '༽⸉>'
     };
 
-    // 指定された口パーツ（結合文字）のリスト
+    // 目のパーツ選択肢 (デフォルトの ᇂ + 追加分)
+    const eyeList = [
+      'ᇂ',
+      '\u03c2',
+      '\u03bc',
+      '\u0020\u003e\u0020',
+      '\u0020\u003c\u0020'
+    ];
+
+    // 口のパーツ選択肢
     const mouthList = [
       '\u032b', // ̫
       '\u032d', // ̭
@@ -171,6 +191,8 @@
     ];
 
     const previewEl = document.getElementById('emojiPreview');
+    const leftEyeOptionsEl = document.getElementById('leftEyeOptions');
+    const rightEyeOptionsEl = document.getElementById('rightEyeOptions');
     const mouthOptionsEl = document.getElementById('mouthOptions');
     const copyBtn = document.getElementById('copyBtn');
     const toastEl = document.getElementById('toast');
@@ -182,6 +204,27 @@
       return fullEmoji;
     }
 
+    // 目のボタン一覧を生成する汎用関数
+    function initEyeOptions(containerEl, eyeKey) {
+      containerEl.innerHTML = '';
+      eyeList.forEach(eye => {
+        const btn = document.createElement('button');
+        btn.className = `part-btn ${eye === state[eyeKey] ? 'active' : ''}`;
+        btn.textContent = eye;
+
+        btn.addEventListener('click', () => {
+          state[eyeKey] = eye;
+
+          // アクティブ表示の切り替え
+          containerEl.querySelectorAll('.part-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+
+          renderEmoji();
+        });
+        containerEl.appendChild(btn);
+      });
+    }
+
     // 口のボタン一覧を生成
     function initMouthOptions() {
       mouthOptionsEl.innerHTML = '';
@@ -189,14 +232,14 @@
         const btn = document.createElement('button');
         btn.className = `part-btn ${m === state.mouth ? 'active' : ''}`;
         
-        // ボタン上では髪の毛パーツ(\u207d)と結合させて見やすく表示
+        // ボタン上では髪の毛パーツ(\u207d)と結合させて表示
         btn.textContent = `${state.hair}${m}`;
         
         btn.addEventListener('click', () => {
           state.mouth = m;
           
           // アクティブ表示の切り替え
-          document.querySelectorAll('#mouthOptions .part-btn').forEach(b => b.classList.remove('active'));
+          mouthOptionsEl.querySelectorAll('.part-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
 
           renderEmoji();
@@ -233,6 +276,8 @@
 
     // 初期化実行
     renderEmoji();
+    initEyeOptions(leftEyeOptionsEl, 'leftEye');
+    initEyeOptions(rightEyeOptionsEl, 'rightEye');
     initMouthOptions();
   </script>
 </body>
