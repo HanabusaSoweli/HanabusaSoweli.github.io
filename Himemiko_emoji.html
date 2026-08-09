@@ -51,7 +51,7 @@
       margin-bottom: 16px;
       min-height: 48px;
       word-break: break-all;
-      white-space: pre-wrap; /* スペース付きの目を正しく描画 */
+      white-space: pre-wrap;
     }
 
     .copy-btn {
@@ -100,7 +100,7 @@
       font-family: "Mona", "IPAMonaGothic", "MS PGothic", sans-serif;
       cursor: pointer;
       transition: all 0.2s;
-      white-space: pre; /* ボタン内のスペースを維持 */
+      white-space: pre;
     }
 
     .part-btn:hover {
@@ -146,13 +146,13 @@
     <!-- コピーボタン -->
     <button class="copy-btn" id="copyBtn">クリップボードにコピー</button>
 
-    <!-- 左目の選択エリア -->
-    <div class="section-title">左目を選択</div>
-    <div class="part-options" id="leftEyeOptions"></div>
-
-    <!-- 右目の選択エリア -->
+    <!-- 右目の選択エリア (キャラクターの右目＝画面に向かって左側) -->
     <div class="section-title">右目を選択</div>
     <div class="part-options" id="rightEyeOptions"></div>
+
+    <!-- 左目の選択エリア (キャラクターの左目＝画面に向かって右側) -->
+    <div class="section-title">左目を選択</div>
+    <div class="part-options" id="leftEyeOptions"></div>
 
     <!-- 口の選択エリア -->
     <div class="section-title">口パーツを選択</div>
@@ -164,20 +164,28 @@
 
   <script>
     // 絵文字の固定パーツと可変パーツの設定
+    // rightEye: キャラクターの右目（画面に向かって左側）
+    // leftEye:  キャラクターの左目（画面に向かって右側）
     const state = {
       leftEar: '<⸊༼',
-      leftEye: '\u11c2',  // デフォルト: ᇂ
+      rightEye: '\u11c2', // デフォルト: ᇂ
       hair: '\u207d',     // 髪の毛 (⁽)
       mouth: '\u032b',    // デフォルト: ̫
-      rightEye: '\u11c2', // デフォルト: ᇂ
+      leftEye: '\u11c2',  // デフォルト: ᇂ
       rightEar: '༽⸉>'
     };
 
-    // 目の選択肢リスト
-    const eyeList = [
+    // 右目（画面に向かって左側）専用の選択肢
+    const rightEyeList = [
       { label: 'ᇂ', value: '\u11c2' },
       { label: 'ᆼ', value: '\u11bc' },
-      { label: ' > ', value: '\u0020\u003e\u0020' },
+      { label: ' > ', value: '\u0020\u003e\u0020' }
+    ];
+
+    // 左目（画面に向かって右側）専用の選択肢
+    const leftEyeList = [
+      { label: 'ᇂ', value: '\u11c2' },
+      { label: 'ᆼ', value: '\u11bc' },
       { label: ' < ', value: '\u0020\u003c\u0020' }
     ];
 
@@ -191,23 +199,23 @@
     ];
 
     const previewEl = document.getElementById('emojiPreview');
-    const leftEyeOptionsEl = document.getElementById('leftEyeOptions');
     const rightEyeOptionsEl = document.getElementById('rightEyeOptions');
+    const leftEyeOptionsEl = document.getElementById('leftEyeOptions');
     const mouthOptionsEl = document.getElementById('mouthOptions');
     const copyBtn = document.getElementById('copyBtn');
     const toastEl = document.getElementById('toast');
 
     // プレビューの更新
     function renderEmoji() {
-      const fullEmoji = `${state.leftEar}${state.leftEye}${state.hair}${state.mouth}${state.rightEye}${state.rightEar}`;
+      const fullEmoji = `${state.leftEar}${state.rightEye}${state.hair}${state.mouth}${state.leftEye}${state.rightEar}`;
       previewEl.textContent = fullEmoji;
       return fullEmoji;
     }
 
-    // 目のボタン一覧を生成（左目・右目共通関数）
-    function initEyeOptions(containerEl, eyeKey) {
+    // 目のボタン一覧を生成
+    function initEyeOptions(containerEl, eyeKey, optionsList) {
       containerEl.innerHTML = '';
-      eyeList.forEach(item => {
+      optionsList.forEach(item => {
         const btn = document.createElement('button');
         btn.className = `part-btn ${item.value === state[eyeKey] ? 'active' : ''}`;
         btn.textContent = item.label;
@@ -272,8 +280,8 @@
 
     // 初期化実行
     renderEmoji();
-    initEyeOptions(leftEyeOptionsEl, 'leftEye');
-    initEyeOptions(rightEyeOptionsEl, 'rightEye');
+    initEyeOptions(rightEyeOptionsEl, 'rightEye', rightEyeList);
+    initEyeOptions(leftEyeOptionsEl, 'leftEye', leftEyeList);
     initMouthOptions();
   </script>
 </body>
