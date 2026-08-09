@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ヒメミコ絵文字ジェネレーター</title>
+  <style>
+    :root {
+      --primary-color: #e91e63;
+      --bg-color: #f9f9fb;
+      --card-bg: #ffffff;
+      --text-color: #333333;
+      --border-color: #e0e0e0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: var(--primary-color);
+    }
+
+    .preview-box {
+      background-color: var(--bg-color);
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      padding: 24px 12px;
+      text-align: center;
+      font-size: 2rem;
+      font-family: "Mona", "IPAMonaGothic", "MS PGothic", sans-serif;
+      margin-bottom: 16px;
+      min-height: 48px;
+      word-break: break-all;
+    }
+
+    .copy-btn {
+      width: 100%;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+      margin-bottom: 24px;
+    }
+
+    .copy-btn:hover {
+      opacity: 0.9;
+    }
+
+    .copy-btn:active {
+      transform: scale(0.98);
+    }
+
+    .section-title {
+      font-weight: bold;
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+      color: #666;
+    }
+
+    .part-options {
+      display: grid;
+      grid-template-columns: repeat( auto-fit, minmax(70px, 1fr) );
+      gap: 8px;
+    }
+
+    .part-btn {
+      background-color: white;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 1.1rem;
+      font-family: "Mona", "IPAMonaGothic", "MS PGothic", sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .part-btn:hover {
+      border-color: var(--primary-color);
+      background-color: #fff0f5;
+    }
+
+    .part-btn.active {
+      background-color: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background-color: #323232;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>ヒメミコ絵文字ジェネレーター</h1>
+
+    <!-- プレビュー表示エリア -->
+    <div class="preview-box" id="emojiPreview"></div>
+
+    <!-- コピーボタン -->
+    <button class="copy-btn" id="copyBtn">クリップボードにコピー</button>
+
+    <!-- 口の選択エリア -->
+    <div class="section-title">口パーツを選択</div>
+    <div class="part-options" id="mouthOptions"></div>
+  </div>
+
+  <!-- コピー完了通知 -->
+  <div class="toast" id="toast">コピーしました！</div>
+
+  <script>
+    // 絵文字の固定パーツと可変パーツの設定
+    const state = {
+      leftEar: '<⸊༼',
+      leftEye: 'ᇂ',
+      mouth: '⁽̫', // デフォルト値
+      rightEye: 'ᇂ',
+      rightEar: '༽⸉>'
+    };
+
+    // 口のパーツ選択肢（必要に応じて追加可能）
+    const mouthList = [
+      '⁽̫', '∀', '_', '.', 'ω', '⑉', '⍥', '𑂰', 'x', 'o'
+    ];
+
+    const previewEl = document.getElementById('emojiPreview');
+    const mouthOptionsEl = document.getElementById('mouthOptions');
+    const copyBtn = document.getElementById('copyBtn');
+    const toastEl = document.getElementById('toast');
+
+    // プレビューの更新
+    function renderEmoji() {
+      const fullEmoji = `${state.leftEar}${state.leftEye}${state.mouth}${state.rightEye}${state.rightEar}`;
+      previewEl.textContent = fullEmoji;
+      return fullEmoji;
+    }
+
+    // 口のボタン一覧を生成
+    function initMouthOptions() {
+      mouthOptionsEl.innerHTML = '';
+      mouthList.forEach(m => {
+        const btn = document.createElement('button');
+        btn.className = `part-btn ${m === state.mouth ? 'active' : ''}`;
+        btn.textContent = m;
+        btn.addEventListener('click', () => {
+          state.mouth = m;
+          
+          // アクティブ表示の切り替え
+          document.querySelectorAll('#mouthOptions .part-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+
+          renderEmoji();
+        });
+        mouthOptionsEl.appendChild(btn);
+      });
+    }
+
+    // クリップボードへコピー
+    copyBtn.addEventListener('click', async () => {
+      const textToCopy = renderEmoji();
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+        showToast();
+      } catch (err) {
+        // フォールバック処理
+        const textarea = document.createElement('textarea');
+        textarea.value = textToCopy;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast();
+      }
+    });
+
+    // トースト通知の表示
+    function showToast() {
+      toastEl.classList.add('show');
+      setTimeout(() => {
+        toastEl.classList.remove('show');
+      }, 2000);
+    }
+
+    // 初期化実行
+    renderEmoji();
+    initMouthOptions();
+  </script>
+</body>
+</html>
