@@ -14,6 +14,10 @@
       --border-color: #e0e0e0;
     }
 
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: Arial, sans-serif;
       background-color: var(--bg-color);
@@ -45,14 +49,18 @@
       background-color: var(--bg-color);
       border: 2px solid var(--border-color);
       border-radius: 8px;
-      padding: 24px 12px;
-      text-align: center;
+      height: 96px; /* 高さを固定 */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 12px;
       font-size: 2rem;
       font-family: Arial, sans-serif;
       margin-bottom: 16px;
-      min-height: 48px;
       word-break: break-all;
       white-space: pre-wrap;
+      overflow: hidden;
+      line-height: 1;
     }
 
     .copy-btn {
