@@ -36,7 +36,7 @@
         font-size: 15px;
       }
       .field label {
-        width: 65px;
+        width: 70px;
         font-weight: bold;
       }
       .field input {
@@ -44,7 +44,7 @@
         font-size: 16px;
         border: 1px solid #ccc;
         border-radius: 4px;
-        width: 130px;
+        width: 140px;
         text-align: right;
         margin-right: 8px;
       }
@@ -73,16 +73,24 @@
               <h3>⏱ 現実の時間</h3>
               <div class="input-grid">
                 <div class="field">
+                  <label>年：</label>
+                  <input type="number" id="realYears" step="any" min="0"> 年
+                </div>
+                <div class="field">
+                  <label>日：</label>
+                  <input type="number" id="realDays" step="any" min="0"> 日
+                </div>
+                <div class="field">
                   <label>時間：</label>
-                  <input type="number" id="realHours" value="0.33" step="any" min="0"> 時間
+                  <input type="number" id="realHours" step="any" min="0"> 時間
                 </div>
                 <div class="field">
                   <label>分：</label>
-                  <input type="number" id="realMins" value="20" step="any" min="0"> 分
+                  <input type="number" id="realMins" step="any" min="0"> 分
                 </div>
                 <div class="field">
                   <label>秒：</label>
-                  <input type="number" id="realSecs" value="1200" step="any" min="0"> 秒
+                  <input type="number" id="realSecs" step="any" min="0"> 秒
                 </div>
               </div>
             </div>
@@ -94,16 +102,24 @@
               <h3>⛏ マイクラの時間</h3>
               <div class="input-grid">
                 <div class="field">
+                  <label>年：</label>
+                  <input type="number" id="mcYears" step="any" min="0"> 年
+                </div>
+                <div class="field">
                   <label>日：</label>
                   <input type="number" id="mcDays" value="1" step="any" min="0"> 日
                 </div>
                 <div class="field">
                   <label>時間：</label>
-                  <input type="number" id="mcHours" value="24" step="any" min="0"> 時間
+                  <input type="number" id="mcHours" step="any" min="0"> 時間
                 </div>
                 <div class="field">
                   <label>分：</label>
-                  <input type="number" id="mcMins" value="1440" step="any" min="0"> 分
+                  <input type="number" id="mcMins" step="any" min="0"> 分
+                </div>
+                <div class="field">
+                  <label>秒：</label>
+                  <input type="number" id="mcSecs" step="any" min="0"> 秒
                 </div>
               </div>
             </div>
@@ -127,12 +143,16 @@
 
     <script>
       const inputs = {
+        realYears: document.getElementById('realYears'),
+        realDays:  document.getElementById('realDays'),
         realHours: document.getElementById('realHours'),
-        realMins: document.getElementById('realMins'),
-        realSecs: document.getElementById('realSecs'),
-        mcDays: document.getElementById('mcDays'),
-        mcHours: document.getElementById('mcHours'),
-        mcMins: document.getElementById('mcMins')
+        realMins:  document.getElementById('realMins'),
+        realSecs:  document.getElementById('realSecs'),
+        mcYears:   document.getElementById('mcYears'),
+        mcDays:    document.getElementById('mcDays'),
+        mcHours:   document.getElementById('mcHours'),
+        mcMins:    document.getElementById('mcMins'),
+        mcSecs:    document.getElementById('mcSecs')
       };
 
       function calculateAndUpdate(sourceId) {
@@ -141,41 +161,56 @@
 
         let totalRealSecs = 0;
 
-        // 入力元に基づいて「現実の総秒数」を算出
+        // 入力元の単位から「現実の総秒数」に統一計算
         switch (sourceId) {
+          case 'realYears': totalRealSecs = val * 31536000; break; // 365日
+          case 'realDays':  totalRealSecs = val * 86400; break;
           case 'realHours': totalRealSecs = val * 3600; break;
           case 'realMins':  totalRealSecs = val * 60; break;
           case 'realSecs':  totalRealSecs = val; break;
-          case 'mcDays':    totalRealSecs = val * 1200; break; // マイクラ1日 = 20分 = 1200秒
-          case 'mcHours':   totalRealSecs = val * 50; break;   // マイクラ1時間 = 50秒
-          case 'mcMins':    totalRealSecs = val * (50 / 60); break; // マイクラ1分 = 50/60秒
+          case 'mcYears':   totalRealSecs = val * 438000; break; // 365マイクラ日 = 438,000秒
+          case 'mcDays':    totalRealSecs = val * 1200; break;   // 1マイクラ日 = 20分 = 1200秒
+          case 'mcHours':   totalRealSecs = val * 50; break;     // 1マイクラ時間 = 50秒
+          case 'mcMins':    totalRealSecs = val * (50 / 60); break;
+          case 'mcSecs':    totalRealSecs = val * (1 / 72); break; // 1マイクラ秒 = 1/72秒
         }
 
-        // 各単位へ全換算
+        // 全単位への算出
         const results = {
+          realYears: totalRealSecs / 31536000,
+          realDays:  totalRealSecs / 86400,
           realHours: totalRealSecs / 3600,
           realMins:  totalRealSecs / 60,
           realSecs:  totalRealSecs,
+          mcYears:   totalRealSecs / 438000,
           mcDays:    totalRealSecs / 1200,
           mcHours:   totalRealSecs / 50,
-          mcMins:    totalRealSecs / (50 / 60)
+          mcMins:    totalRealSecs / (50 / 60),
+          mcSecs:    totalRealSecs * 72
         };
 
-        // 操作中でない他の全入力欄を更新
+        // フォーカスされていない他の全入力欄を更新
         const activeEl = document.activeElement;
         for (const key in inputs) {
           if (key !== sourceId && inputs[key] !== activeEl) {
             const num = results[key];
-            // 整数ならそのまま、小数なら小数点以下2桁までに丸める
-            inputs[key].value = Number.isInteger(num) ? num : parseFloat(num.toFixed(2));
+            if (Number.isInteger(num)) {
+              inputs[key].value = num;
+            } else {
+              // 端数が小さすぎる場合は有効数字を残して綺麗に表示
+              inputs[key].value = parseFloat(num.toFixed(4));
+            }
           }
         }
       }
 
-      // すべての入力欄にイベントリスナーを設定
+      // イベントリスナーの登録
       Object.keys(inputs).forEach(key => {
         inputs[key].addEventListener('input', () => calculateAndUpdate(key));
       });
+
+      // 初期表示計算（マイクラ1日＝各単位に自動展開）
+      calculateAndUpdate('mcDays');
     </script>
   </body>
 </html>
