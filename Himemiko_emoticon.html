@@ -7,6 +7,8 @@
     <meta name="description" content="ヒメミコの顔文字を作成・コピーできるツールです。">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="style.css">
+    <!-- 共通UI読み込み用JS -->
+    <script src="include.js" defer></script>
     <style>
       /* --- ジェネレーター専用スタイル --- */
       :root {
@@ -137,9 +139,8 @@
   </head>
   <body>
     <div id="outer">
-      <header>
-        <h1><a href="index.html">そえりのへや</a></h1>
-      </header>
+      <!-- 共通UI：include.jsで自動読み込み -->
+      <header></header>
       
       <div id="content">
         <div class="inner">
@@ -167,18 +168,9 @@
         </div>
       </div>
       
-      <aside>
-        <div class="right-title">SNS / 外部リンク</div>
-        <div class="link">
-          <ul>
-            <li><a href="https://x.com/soweli_suwi0209" target="_blank" rel="noopener noreferrer">Twitter (現X)</a></li>
-          </ul>
-        </div>
-      </aside>
-      
-      <footer>
-        <p>© 2026 そえりのへや</p>
-      </footer>
+      <!-- 共通UI：include.jsで自動読み込み -->
+      <aside></aside>
+      <footer></footer>
     </div>
 
     <!-- コピー完了通知 -->
