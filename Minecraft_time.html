@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <title>マイクラ時間に変換するサイト - そえりのへや</title>
+    <meta name="keywords" content="マインクラフト,時間変換,マイクラ時間,現実時間">
+    <meta name="description" content="マインクラフトのゲーム内時間と現実時間を相互変換できるツールです。">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="style.css">
+    <style>
+      /* 変換ツール用スタイル */
+      .converter-box {
+        background: #f9f9f9;
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+      }
+      .converter-group {
+        margin-bottom: 15px;
+      }
+      .converter-group label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      .converter-group input {
+        padding: 6px 10px;
+        font-size: 16px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        width: 120px;
+      }
+      .result-text {
+        font-size: 16px;
+        font-weight: bold;
+        color: #265699;
+        margin-top: 10px;
+      }
+      .help-text {
+        font-size: 12px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="outer">
+      <header>
+        <h1><a href="index.html">そえりのへや</a></h1>
+        <p>マイクラ時間に変換するサイト</p>
+      </header>
+      
+      <div id="content">
+        <div class="inner">
+          <h2>現実の時間 ➔ マイクラの時間</h2>
+          <div class="converter-box">
+            <div class="converter-group">
+              <label>現実の時間：</label>
+              <input type="number" id="realMin" value="20" min="0"> 分
+            </div>
+            <div class="result-text" id="realToMcResult">マイクラでは：1日（24時間）</div>
+          </div>
+
+          <h2>マイクラの時間 ➔ 現実の時間</h2>
+          <div class="converter-box">
+            <div class="converter-group">
+              <label>マイクラの時間：</label>
+              <input type="number" id="mcDay" value="1" min="0"> 日 
+              <input type="number" id="mcHour" value="0" min="0" max="23"> 時間
+            </div>
+            <div class="result-text" id="mcToRealResult">現実では：20分0秒</div>
+            <p class="help-text">※マイクラの1日 = 現実の20分（1時間 = 50秒）として計算しています。</p>
+          </div>
+        </div>
+      </div>
+      
+      <aside>
+        <div class="right-title">SNS / 外部リンク</div>
+        <div class="link">
+          <ul>
+            <li><a href="https://x.com/soweli_suwi0209" target="_blank" rel="noopener noreferrer">Twitter (現X)</a></li>
+          </ul>
+        </div>
+      </aside>
+      
+      <footer>
+        <p>© 2026 そえりのへや</p>
+      </footer>
+    </div>
+
+    <script>
+      // 現実 ➔ マイクラ
+      const realMinInput = document.getElementById('realMin');
+      const realToMcResult = document.getElementById('realToMcResult');
+
+      function calcRealToMc() {
+        const realMin = parseFloat(realMinInput.value) || 0;
+        // 現実20分 = マイクラ1日（24時間）
+        const totalMcHours = (realMin / 20) * 24;
+        const days = Math.floor(totalMcHours / 24);
+        const hours = Math.floor(totalMcHours % 24);
+        const mins = Math.floor((totalMcHours * 60) % 60);
+
+        let resultStr = "マイクラでは：";
+        if (days > 0) resultStr += `${days}日 `;
+        resultStr += `${hours}時間 ${mins}分`;
+        
+        realToMcResult.textContent = resultStr;
+      }
+
+      realMinInput.addEventListener('input', calcRealToMc);
+
+      // マイクラ ➔ 現実
+      const mcDayInput = document.getElementById('mcDay');
+      const mcHourInput = document.getElementById('mcHour');
+      const mcToRealResult = document.getElementById('mcToRealResult');
+
+      function calcMcToReal() {
+        const days = parseFloat(mcDayInput.value) || 0;
+        const hours = parseFloat(mcHourInput.value) || 0;
+        
+        // マイクラ1日 = 20分（1200秒）、1時間 = 50秒
+        const totalRealSeconds = (days * 1200) + (hours * 50);
+        const realHours = Math.floor(totalRealSeconds / 3600);
+        const realMins = Math.floor((totalRealSeconds % 3600) / 60);
+        const realSecs = Math.floor(totalRealSeconds % 60);
+
+        let resultStr = "現実では：";
+        if (realHours > 0) resultStr += `${realHours}時間 `;
+        if (realMins > 0 || realHours > 0) resultStr += `${realMins}分 `;
+        resultStr += `${realSecs}秒`;
+
+        mcToRealResult.textContent = resultStr;
+      }
+
+      mcDayInput.addEventListener('input', calcMcToReal);
+      mcHourInput.addEventListener('input', calcMcToReal);
+    </script>
+  </body>
+</html>
