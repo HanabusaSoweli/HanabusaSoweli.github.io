@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>オンラインカードゲーム</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; background: #1a1a24; color: #fff; margin: 0; }
+    .screen { display: none; padding: 20px; }
+    .active { display: block; }
+    .menu-btn { display: block; width: 220px; margin: 15px auto; padding: 15px; font-size: 18px; cursor: pointer; background: #2a2a3a; color: white; border: 1px solid #4a4a6a; border-radius: 8px; }
+    .menu-btn:hover { background: #3a3a5a; }
+  </style>
+</head>
+<body>
+
+  <div id="home-screen" class="screen active">
+    <h1>カードゲーム ホーム</h1>
+    <div id="player-info">プレイヤー: ゲスト</div>
+    <button class="menu-btn" onclick="goToScreen('gacha-screen')">🎁 パック開封</button>
+    <button class="menu-btn" onclick="goToScreen('deck-screen')">🎴 デッキ編成</button>
+    <button class="menu-btn" onclick="startBattle()">⚔️ ネット対戦</button>
+  </div>
+
+  <div id="gacha-screen" class="screen">
+    <h1>パック開封</h1>
+    <button class="menu-btn" onclick="drawGacha()">1パック引く</button>
+    <button class="menu-btn" onclick="goToScreen('home-screen')">ホームへ戻る</button>
+  </div>
+
+  <div id="deck-screen" class="screen">
+    <h1>デッキ編成</h1>
+    <p>所持カードからデッキを構築します</p>
+    <button class="menu-btn" onclick="goToScreen('home-screen')">ホームへ戻る</button>
+  </div>
+
+  <div id="battle-screen" class="screen">
+    <h1>対戦ルーム</h1>
+    <div id="battle-status">対戦相手を探しています...</div>
+    <button class="menu-btn" onclick="cancelBattle()">キャンセル</button>
+  </div>
+
+  <script>
+    // 画面切り替え処理
+    function goToScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+    }
+
+    // --- 将来のネット対応用コード枠 ---
+
+    // 1. 対戦マッチング開始（WebSocket接続用）
+    function startBattle() {
+      goToScreen('battle-screen');
+      document.getElementById('battle-status').innerText = 'サーバーに接続中...';
+      
+      // TODO: ここに Socket.io などの通信処理を記述
+      // socket.emit('joinQueue', { userId: currentUser.id, deck: currentDeck });
+    }
+
+    function cancelBattle() {
+      // TODO: サーバーにマッチングキャンセルを送る
+      goToScreen('home-screen');
+    }
+
+    // 2. ガチャ処理（データベース連携用）
+    async function drawGacha() {
+      // TODO: Supabase等へAPIリクエストを送ってカードデータを取得・DB保存する
+      alert('パックを引きました！（カードを獲得）');
+    }
+  </script>
+</body>
+</html>
