@@ -3,37 +3,55 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>オンラインカードゲーム</title>
+  <title>ケリクサル (CALYXAL)</title>
   <style>
     body { font-family: sans-serif; text-align: center; background: #1a1a24; color: #fff; margin: 0; }
     .screen { display: none; padding: 20px; }
     .active { display: block; }
     .menu-btn { display: block; width: 220px; margin: 15px auto; padding: 15px; font-size: 18px; cursor: pointer; background: #2a2a3a; color: white; border: 1px solid #4a4a6a; border-radius: 8px; }
     .menu-btn:hover { background: #3a3a5a; }
+
+    /* カード表示スタイル */
+    .card-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 20px; }
+    .card { width: 110px; padding: 8px; background: #2a2a3a; border: 1px solid #4a4a6a; border-radius: 8px; text-align: center; }
+    .card img { width: 100%; height: 130px; object-fit: cover; border-radius: 4px; background-color: #ffffff; }
+    .card-name { font-size: 12px; margin-top: 6px; color: #fff; font-weight: bold; }
   </style>
 </head>
 <body>
 
+  <!-- ホーム画面 -->
   <div id="home-screen" class="screen active">
-    <h1>カードゲーム ホーム</h1>
+    <h1>ケリクサル (CALYXAL)</h1>
     <div id="player-info">プレイヤー: ゲスト</div>
     <button class="menu-btn" onclick="goToScreen('gacha-screen')">🎁 パック開封</button>
     <button class="menu-btn" onclick="goToScreen('deck-screen')">🎴 デッキ編成</button>
     <button class="menu-btn" onclick="startBattle()">⚔️ ネット対戦</button>
   </div>
 
+  <!-- ガチャ画面 -->
   <div id="gacha-screen" class="screen">
     <h1>パック開封</h1>
     <button class="menu-btn" onclick="drawGacha()">1パック引く</button>
+    
+    <!-- ガチャ結果表示エリア -->
+    <div id="gacha-result" class="card-container"></div>
+    
     <button class="menu-btn" onclick="goToScreen('home-screen')">ホームへ戻る</button>
   </div>
 
+  <!-- デッキ編成画面 -->
   <div id="deck-screen" class="screen">
-    <h1>デッキ編成</h1>
-    <p>所持カードからデッキを構築します</p>
+    <h1>デッキ編成 / 所持カード</h1>
+    <p>獲得したカード一覧</p>
+    
+    <!-- 所持カード一覧表示エリア -->
+    <div id="inventory" class="card-container"></div>
+    
     <button class="menu-btn" onclick="goToScreen('home-screen')">ホームへ戻る</button>
   </div>
 
+  <!-- 対戦画面 -->
   <div id="battle-screen" class="screen">
     <h1>対戦ルーム</h1>
     <div id="battle-status">対戦相手を探しています...</div>
@@ -41,32 +59,76 @@
   </div>
 
   <script>
+    // プレイヤーの所持カードデータ（メモリ保存）
+    // 将来的にSupabaseなどのデータベースへ送信する配列
+    const userCards = [];
+
+    // 真っ白な仮カードの画像データ (1x1の白画像をSVG Data URIで生成)
+    const whiteCardImage = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='140' style='background:%23ffffff;'%3E%3C/svg%3E";
+
     // 画面切り替え処理
     function goToScreen(screenId) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById(screenId).classList.add('active');
+
+      // デッキ画面を開く際に所持カードを表示を更新
+      if (screenId === 'deck-screen') {
+        renderInventory();
+      }
     }
 
-    // --- 将来のネット対応用コード枠 ---
+    // ガチャ実行
+    function drawGacha() {
+      // 仮カードのデータ作成
+      const cardId = userCards.length + 1;
+      const newCard = {
+        id: cardId,
+        name: `仮カード #${cardId}`,
+        image: whiteCardImage
+      };
 
-    // 1. 対戦マッチング開始（WebSocket接続用）
+      // 所持リストに追加
+      userCards.push(newCard);
+
+      // ガチャ結果を表示
+      const resultArea = document.getElementById('gacha-result');
+      resultArea.innerHTML = `
+        <div class="card">
+          <img src="${newCard.image}" alt="カード画像">
+          <div class="card-name">${newCard.name}</div>
+        </div>
+      `;
+    }
+
+    // 所持カード一覧の描画
+    function renderInventory() {
+      const inventoryArea = document.getElementById('inventory');
+      inventoryArea.innerHTML = '';
+
+      if (userCards.length === 0) {
+        inventoryArea.innerHTML = '<p>カードをまだ持っていません。</p>';
+        return;
+      }
+
+      userCards.forEach(card => {
+        const cardElement = document.createElement('div');
+        cardElement.className = 'card';
+        cardElement.innerHTML = `
+          <img src="${card.image}" alt="カード画像">
+          <div class="card-name">${card.name}</div>
+        `;
+        inventoryArea.appendChild(cardElement);
+      });
+    }
+
+    // --- ネット通信用 ---
     function startBattle() {
       goToScreen('battle-screen');
       document.getElementById('battle-status').innerText = 'サーバーに接続中...';
-      
-      // TODO: ここに Socket.io などの通信処理を記述
-      // socket.emit('joinQueue', { userId: currentUser.id, deck: currentDeck });
     }
 
     function cancelBattle() {
-      // TODO: サーバーにマッチングキャンセルを送る
       goToScreen('home-screen');
-    }
-
-    // 2. ガチャ処理（データベース連携用）
-    async function drawGacha() {
-      // TODO: Supabase等へAPIリクエストを送ってカードデータを取得・DB保存する
-      alert('パックを引きました！（カードを獲得）');
     }
   </script>
 </body>
